@@ -1,0 +1,95 @@
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  OneToOne,
+  JoinColumn,
+  BaseEntity,
+  ManyToOne,
+  OneToMany,
+} from "typeorm";
+import { ObjectType, Field } from "type-graphql";
+import { User } from "./User";
+import { CarInfo } from "./CarInfo";
+import { ServicePackages } from "./ServicePackages";
+import { Dealership } from "./Dealership";
+
+export enum OrderStatus {
+  INITIATED = "INITIATED",
+  ASSIGNED = "ASSIGNED",
+  PENDING = "PENDING",
+  IN_PROGRESS = "IN_PROGRESS",
+  ACCEPTED = "ACCEPTED",
+  DECLINED = "DECLINED",
+  CANCELLED = "CANCELLED",
+  COMPLETED = "COMPLETED",
+}
+
+@ObjectType()
+@Entity()
+export class Order extends BaseEntity {
+  @Field()
+  @PrimaryGeneratedColumn("uuid")
+  orderId!: string;
+
+  @Field(() => User, { nullable: true })
+  @ManyToOne(() => User, (user) => user.order, {
+    nullable: true,
+  })
+  customer!: User;
+
+  @Field(() => User, { nullable: true })
+  @ManyToOne(() => User, (user) => user.order, {
+    nullable: true,
+  })
+  driver!: User;
+
+  @Field()
+  @Column()
+  orderDeliveryDate!: Date;
+
+  @Field()
+  @Column()
+  pickupLocation!: string;
+
+  @Field(() => ServicePackages, { nullable: true })
+  @OneToOne(() => ServicePackages, (service) => service.servicePackageId, {
+    eager: true,
+    createForeignKeyConstraints: false,
+  })
+  @JoinColumn()
+  serviceType!: ServicePackages;
+
+  @Field()
+  @Column()
+  notes!: string;
+
+  @Field(() => CarInfo, { nullable: true })
+  @ManyToOne(() => CarInfo, (carInfo) => carInfo.order, {
+    nullable: true,
+  })
+  vehicle!: CarInfo;
+
+  @Field({ nullable: true })
+  @Column({ nullable: true })
+  orderStatus!: OrderStatus;
+
+  @Field(() => Dealership, { nullable: true })
+  @ManyToOne(() => Dealership, (dealership) => dealership.dealershipId, {
+    eager: true,
+    createForeignKeyConstraints: false,
+  })
+  dealership!: Dealership;
+
+  @Field({ nullable: true })
+  @Column({ default: false })
+  valetVehicleRequest!: boolean;
+
+  @Field()
+  @Column()
+  createdDate!: Date;
+
+  @Field({ nullable: true })
+  @Column({ nullable: true , default: new Date()})
+  updatedDate!: Date;
+}

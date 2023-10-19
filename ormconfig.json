@@ -1,0 +1,13 @@
+{
+  "type": "postgres",
+  "host": "localhost",
+  "port": 5432,
+  "username": "postgres",
+  "password": "postgres",
+  "database": "liftlink",
+  "entities": [
+    "src/core/entity/*.ts"
+  ],
+  "synchronize": true,
+  "cache": true
+}
