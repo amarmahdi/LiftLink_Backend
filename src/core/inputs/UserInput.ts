@@ -9,17 +9,17 @@ export class UserInput {
   @Field()
   password!: string;
 
-  @Field()
-  firstName!: string;
+  @Field({ nullable: true })
+  firstName?: string;
 
-  @Field()
-  lastName!: string;
+  @Field({ nullable: true })
+  lastName?: string;
 
   @Field()
   email!: string;
 
-  @Field()
-  phoneNumber!: string;
+  @Field({ nullable: true })
+  phoneNumber?: string;
 
   @Field()
   accountType!: AccountType;

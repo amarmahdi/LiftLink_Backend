@@ -1,4 +1,15 @@
-import { Entity, PrimaryGeneratedColumn, Column, BaseEntity, OneToOne, JoinColumn, OneToMany, ManyToOne, ManyToMany, JoinTable } from "typeorm";
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  BaseEntity,
+  OneToOne,
+  JoinColumn,
+  OneToMany,
+  ManyToOne,
+  ManyToMany,
+  JoinTable,
+} from "typeorm";
 import { ObjectType, Field, InputType } from "type-graphql";
 import { AccountType } from "../types/AccountTypes";
 import { CarInfo } from "./CarInfo";
@@ -16,7 +27,7 @@ import { Valet } from "./Valet";
 @Entity()
 export class User extends BaseEntity {
   @Field()
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn("uuid")
   userId!: string;
 
   @Field()
@@ -26,12 +37,12 @@ export class User extends BaseEntity {
   @Column()
   password!: string;
 
-  @Field()
-  @Column()
+  @Field({ nullable: true })
+  @Column({ nullable: true })
   firstName!: string;
 
-  @Field()
-  @Column()
+  @Field({ nullable: true })
+  @Column({ nullable: true })
   lastName!: string;
 
   @Field()
@@ -39,10 +50,14 @@ export class User extends BaseEntity {
   email!: string;
 
   @Field(() => [ProfilePicture], { nullable: true })
-  @OneToMany(() => ProfilePicture, profilePicture => profilePicture.user, { eager: true, createForeignKeyConstraints: false, nullable: true })
+  @OneToMany(() => ProfilePicture, (profilePicture) => profilePicture.user, {
+    eager: true,
+    createForeignKeyConstraints: false,
+    nullable: true,
+  })
   profilePicture!: ProfilePicture[];
 
-  @Field()
+  @Field({ nullable: true })
   @Column({ unique: true, nullable: true })
   phoneNumber!: string;
 
@@ -51,20 +66,28 @@ export class User extends BaseEntity {
   accountType!: AccountType;
 
   @Field(() => [CarInfo], { nullable: true })
-  @OneToMany(() => CarInfo, carInfo => carInfo.user, { eager: true, createForeignKeyConstraints: false, nullable: true })
+  @OneToMany(() => CarInfo, (carInfo) => carInfo.user, {
+    eager: true,
+    createForeignKeyConstraints: false,
+    nullable: true,
+  })
   car!: CarInfo[];
 
   @Field({ nullable: true })
-  @OneToOne(() => Address, address => address.addressId, { eager: true, createForeignKeyConstraints: false, nullable: true })
+  @OneToOne(() => Address, (address) => address.addressId, {
+    eager: true,
+    createForeignKeyConstraints: false,
+    nullable: true,
+  })
   @JoinColumn()
   address!: Address;
 
   @Field()
-  @Column()
+  @Column({ default: new Date() })
   dateJoined!: Date;
 
-  @Field()
-  @Column()
+  @Field({ nullable: true })
+  @Column({ nullable: true })
   lastLogin!: Date;
 
   @Field()
@@ -79,7 +102,11 @@ export class User extends BaseEntity {
   @Column()
   isSuperuser!: boolean;
 
-  @OneToMany(() => Token, token => token.user, { eager: true, createForeignKeyConstraints: false, nullable: true })
+  @OneToMany(() => Token, (token) => token.user, {
+    eager: true,
+    createForeignKeyConstraints: false,
+    nullable: true,
+  })
   tokens!: Token[];
 
   @Field({ nullable: true })
@@ -87,24 +114,44 @@ export class User extends BaseEntity {
   isDealership!: boolean;
 
   @Field(() => [Dealership], { nullable: true })
-  @ManyToMany(() => Dealership, dealership => dealership.dealershipId, { eager: true, createForeignKeyConstraints: false, nullable: true })
+  @ManyToMany(() => Dealership, (dealership) => dealership.dealershipId, {
+    eager: true,
+    createForeignKeyConstraints: false,
+    nullable: true,
+  })
   @JoinTable()
   dealerships!: Dealership[];
 
   @Field(() => [Order], { nullable: true })
-  @OneToMany(() => Order, order => order.customer, { eager: true, createForeignKeyConstraints: false, nullable: true })
+  @OneToMany(() => Order, (order) => order.customer, {
+    eager: true,
+    createForeignKeyConstraints: false,
+    nullable: true,
+  })
   order!: Order[];
 
   @Field(() => [VehicleCheck], { nullable: true })
-  @OneToMany(() => VehicleCheck, vehicleCheck => vehicleCheck.user, { eager: true, createForeignKeyConstraints: false, nullable: true })
+  @OneToMany(() => VehicleCheck, (vehicleCheck) => vehicleCheck.user, {
+    eager: true,
+    createForeignKeyConstraints: false,
+    nullable: true,
+  })
   checks!: VehicleCheck[];
 
   @Field(() => [Valet], { nullable: true })
-  @OneToMany(() => Valet, valet => valet.driver, { eager: true, createForeignKeyConstraints: false, nullable: true })
+  @OneToMany(() => Valet, (valet) => valet.driver, {
+    eager: true,
+    createForeignKeyConstraints: false,
+    nullable: true,
+  })
   driverValets!: Valet[];
 
   @Field(() => [Valet], { nullable: true })
-  @OneToMany(() => Valet, valet => valet.customer, { eager: true, createForeignKeyConstraints: false, nullable: true })
+  @OneToMany(() => Valet, (valet) => valet.customer, {
+    eager: true,
+    createForeignKeyConstraints: false,
+    nullable: true,
+  })
   customerValets!: Valet[];
 
   @Field()
@@ -126,7 +173,7 @@ export class User extends BaseEntity {
     const options: SignOptions = {
       expiresIn: "1s",
     };
-    const accessToken = sign(JSON.stringify(payload), secret, (options as any));
+    const accessToken = sign(JSON.stringify(payload), secret, options as any);
 
     return accessToken;
   }
