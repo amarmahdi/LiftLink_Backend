@@ -109,7 +109,11 @@ dotenv.config();
     json(),
     expressMiddleware(server, {
       context: async ({ req, res }) => ({ req, res }),
-    })
+    }),
+    (req, res, next) => {
+      console.log(req.body);
+      next();
+    }
   );
   const PORT = 8000;
   httpServer.listen(PORT, () => {
