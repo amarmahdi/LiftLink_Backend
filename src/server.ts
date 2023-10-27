@@ -103,17 +103,16 @@ dotenv.config();
     ],
   });
   await server.start();
+  app.get("/", (req, res) => {
+    res.send("Hello World");
+  });
   app.use(
     "/graphql",
     cors<cors.CorsRequest>(),
     json(),
     expressMiddleware(server, {
       context: async ({ req, res }) => ({ req, res }),
-    }),
-    (req, res, next) => {
-      console.log(req.body);
-      next();
-    }
+    })
   );
   const PORT = 8000;
   httpServer.listen(PORT, () => {
