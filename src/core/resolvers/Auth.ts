@@ -3,7 +3,6 @@ import {
   Mutation,
   Arg,
   Ctx,
-  Query,
   ObjectType,
   Field,
 } from "type-graphql";
@@ -17,6 +16,7 @@ import { Token, TokenType } from "../entity/Tokens";
 import { Response } from "express";
 import dotenv from "dotenv";
 import { getRepository } from "typeorm";
+import { getUser } from "./UserInfo";
 dotenv.config();
 
 @ObjectType()
@@ -65,6 +65,7 @@ export class UserResolver {
         accType = AccountType.ADMIN;
         break;
     }
+
     const existingUser = await User.findOne({
       where: [{ username }, { email }],
     });
@@ -76,7 +77,9 @@ export class UserResolver {
         throw new Error("Email already exists");
       }
     }
+
     const hashedPassword = await bcrypt.hash(password, 12);
+
     try {
       const user = await User.create({
         username: username,
@@ -131,19 +134,17 @@ export class UserResolver {
       if (isAdmin) {
         delershipFromUsername = username.split("@")[1];
       }
-      const user = await getRepository(User)
-        .createQueryBuilder("user")
-        .leftJoinAndSelect("user.tokens", "tokens")
-        .leftJoinAndSelect("user.dealerships", "dealerships")
-        .where("user.username = :username", { username: filteredUsername })
-        .getOne();
+
+      const user = await getUser({ username: filteredUsername });
       if (!user) {
         throw new Error("Invalid login credentials");
       }
+
       const valid = await bcrypt.compare(password, user.password);
       if (!valid) {
         throw new Error("Invalid login credentials");
       }
+
       const {
         accessToken,
         refreshToken,
@@ -159,6 +160,7 @@ export class UserResolver {
         );
         loggedInUser.dealerships = dealership;
       }
+
       const response = new UserLoginResponse();
       response.token = accessToken;
       response.user = loggedInUser;
@@ -199,7 +201,7 @@ export class UserResolver {
           .orderBy("token.expiresAt", "ASC")
           .getOne();
       }
-      
+
       if (!token) {
         const newToken = await Token.create({
           user: user,

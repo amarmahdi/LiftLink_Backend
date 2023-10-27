@@ -110,4 +110,8 @@ export class Dealership extends BaseEntity {
   @Field(() => [Valet], { nullable: true })
   @OneToMany(() => Valet, valet => valet.dealership, { nullable: true })
   valets!: Valet[];
+
+  @Field()
+  @Column()
+  createdBy!: string;
 }

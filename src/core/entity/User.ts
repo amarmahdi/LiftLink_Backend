@@ -102,6 +102,10 @@ export class User extends BaseEntity {
   @Column()
   isSuperuser!: boolean;
 
+  @Field()
+  @Column({ default: false })
+  isVerified!: boolean;
+
   @OneToMany(() => Token, (token) => token.user, {
     eager: true,
     createForeignKeyConstraints: false,

@@ -51,17 +51,19 @@ export class Valet extends BaseEntity {
   @ManyToOne(() => Dealership, (dealership) => dealership.valets)
   dealership!: Dealership;
 
-  @Field(() => [VehicleCheck], { nullable: true })
-  @OneToMany(() => VehicleCheck, (vehicleCheck) => vehicleCheck.customerVehicleChecks, {
+  @Field(() => VehicleCheck, { nullable: true })
+  @OneToOne(() => VehicleCheck, (vehicleCheck) => vehicleCheck.vehicleCheckId, {
     nullable: true,
   })
-  customerVehiclChecks!: VehicleCheck[];
+  @JoinColumn()
+  customerVehiclChecks!: VehicleCheck;
 
-  @Field(() => [VehicleCheck], { nullable: true })
-  @OneToMany(() => VehicleCheck, (vehicleCheck) => vehicleCheck.valetVehicleChecks, {
+  @Field(() => VehicleCheck, { nullable: true })
+  @OneToOne(() => VehicleCheck, (vehicleCheck) => vehicleCheck.vehicleCheckId, {
     nullable: true,
   })
-  valetVehicleChecks!: VehicleCheck[];
+  @JoinColumn()
+  valetVehicleChecks!: VehicleCheck;
 
   @Field({ nullable: true })
   @OneToOne(() => Order, (order) => order.orderId, {

@@ -6,6 +6,9 @@ import {
   UseMiddleware,
   Ctx,
   Authorized,
+  PubSub,
+  Subscription,
+  Root,
 } from "type-graphql";
 import { Dealership } from "../entity/Dealership";
 import { MyContext } from "../helpers/MyContext";
@@ -16,6 +19,8 @@ import { UserDealershipConfirmation } from "../entity/Confirmation";
 import { searchDealerships } from "../helpers/searchUsers";
 import { AssignStatus, AssignedOrders } from "../entity/AssignedOrder";
 import { getRepository } from "typeorm";
+import { getUser } from "./UserInfo";
+import usernameToken from "../helpers/usernameToken";
 
 const isIncluded = async (arr: any, field: any, name: any) => {
   for (let i = 0; i < arr.length; i++) {
@@ -154,7 +159,8 @@ export class DealershipResolver {
   async addUsersToDealership(
     @Arg("userId") userId: string,
     @Arg("dealershipName") dealershipName: string,
-    @Ctx() ctx: MyContext
+    @Ctx() ctx: MyContext,
+    @PubSub("NOTIFY_DRIVER") publish: any
   ) {
     try {
       const dusername = (<any>ctx.payload).username;
@@ -183,11 +189,47 @@ export class DealershipResolver {
         user,
         dealership,
       }).save();
+      await publish({
+        payload: { userId: user.userId, dealershipId: dealership.dealershipId },
+      });
       return "Confirmation sent";
     } catch (error) {
       console.error(error);
       throw new Error("Failed to add user to dealership");
     }
+  }
+
+  @Subscription(() => UserDealershipConfirmation, {
+    topics: "NOTIFY_DRIVER",
+    filter: async ({ payload, args, context }) => {
+      console.log(payload.userId, "driver");
+      const driver = await getUser({
+        userId: payload.payload.userId,
+      });
+      if (!driver) return false;
+      const decoded = await usernameToken(
+        context.connectionParams.Authorization
+      );
+      console.log(decoded, "username");
+      if (driver.username !== (<any>decoded).username) return false;
+      return true;
+    },
+  })
+  async notifyDriver(@Ctx() ctx: MyContext, @Root() { payload }: any) {
+    const dealership = await Dealership.findOne({
+      where: { dealershipId: payload.dealershipId },
+    });
+    if (!dealership) throw new Error("Dealership not found");
+    const confirmation = await getRepository(UserDealershipConfirmation)
+      .createQueryBuilder("userDealershipConfirmation")
+      .leftJoinAndSelect("userDealershipConfirmation.user", "user")
+      .leftJoinAndSelect("userDealershipConfirmation.dealership", "dealership")
+      .where("user.userId = :userId", { userId: payload.userId })
+      .andWhere("dealership.dealershipId = :dealershipId", {
+        dealershipId: payload.dealershipId,
+      })
+      .getOne();
+    return confirmation;
   }
 
   @Mutation(() => String)

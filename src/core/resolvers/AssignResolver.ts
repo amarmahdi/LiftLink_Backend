@@ -8,7 +8,6 @@ import {
   Resolver,
   Root,
   Subscription,
-  UseMiddleware,
 } from "type-graphql";
 import { ApolloError } from "apollo-server-core";
 import { AccountType } from "../types/AccountTypes";
@@ -21,6 +20,7 @@ import { User } from "../entity/User";
 import { AssignOrderInput } from "../inputs/AssignOrderInput";
 import { createQueryBuilder, getRepository } from "typeorm";
 import usernameToken from "../helpers/usernameToken";
+import { getUser } from "./UserInfo";
 
 @Resolver()
 export class AssignResolver {
@@ -28,12 +28,15 @@ export class AssignResolver {
   @Query(() => [AssignedOrders])
   async getAllAssignedOrders(@Ctx() ctx: MyContext) {
     try {
-      const assignedOrders = await AssignedOrders.find();
+      const assignedOrders = await getRepository(AssignedOrders)
+        .createQueryBuilder("assignedOrders")
+        .getMany();
+
       console.log(assignedOrders);
       return assignedOrders;
     } catch (error) {
       console.error(error);
-      throw new Error("Failed to get assigned orders " + error);
+      throw new ApolloError("Failed to get assigned orders " + error);
     }
   }
 
@@ -43,14 +46,24 @@ export class AssignResolver {
     @Arg("dealershipId") dealershipId: string,
     @Ctx() ctx: MyContext
   ) {
-    const assignedOrders = await AssignedOrders.find({
-      where: {
-        dealership: {
+    try {
+      const assignedOrders = await getRepository(AssignedOrders)
+        .createQueryBuilder("assignedOrders")
+        .leftJoinAndSelect("assignedOrders.dealership", "dealership")
+        .where("dealership.dealershipId = :dealershipId", {
           dealershipId: dealershipId,
-        },
-      },
-    });
-    return assignedOrders;
+        })
+        .getMany();
+
+      if (!assignedOrders) {
+        throw new ApolloError("Assigned orders not found");
+      }
+
+      return assignedOrders;
+    } catch (error) {
+      console.error("Error getting assigned orders:", error);
+      throw new ApolloError("Failed to get assigned orders");
+    }
   }
 
   @Authorized()
@@ -60,8 +73,8 @@ export class AssignResolver {
     @Ctx() ctx: MyContext
   ) {
     try {
-      const user = await User.findOne({ where: { userId: userId } });
-      if (!user) throw new Error("User not found");
+      const user = await getUser({ userId });
+      if (!user) throw new ApolloError("User not found");
 
       if (user.accountType === AccountType.CUSTOMER.valueOf()) {
         const assignedOrder = await getRepository(AssignedOrders)
@@ -76,7 +89,7 @@ export class AssignResolver {
             assignStatus: AssignStatus.PENDING,
           })
           .getMany();
-        if (!assignedOrder) throw new Error("Orders not assigned yet!");
+        if (!assignedOrder) throw new ApolloError("Orders not assigned yet!");
         return assignedOrder;
       }
 
@@ -91,36 +104,55 @@ export class AssignResolver {
             assignStatus: AssignStatus.PENDING,
           })
           .getMany();
-        if (!assignedOrder) throw new Error("No Assigned order found");
+        if (!assignedOrder) throw new ApolloError("No Assigned order found");
         return assignedOrder;
       }
     } catch (error) {
       console.error(error);
-      throw new Error("Failed to get assigned orders " + error);
+      throw new ApolloError("Failed to get assigned orders " + error);
     }
   }
 
   @Authorized()
   @Query(() => AssignedOrders)
   async getAssignedOrder(
-    @Arg("assignId") assignId: string,
+    @Arg("assignId", { nullable: true }) assignId: string,
+    @Arg("orderId", { nullable: true }) orderId: string,
     @Ctx() ctx: MyContext
   ) {
     try {
-      const assignedOrder = await getRepository(AssignedOrders)
-        .createQueryBuilder("assignedOrders")
-        .leftJoinAndSelect("assignedOrders.order", "order")
-        .leftJoinAndSelect("assignedOrders.drivers", "drivers")
-        .leftJoinAndSelect("assignedOrders.dealership", "dealership")
-        .where("assignedOrders.assignId = :assignId", { assignId: assignId })
-        .getOne();
-      if (!assignedOrder) throw new Error("Assigned order not found");
+      let assignedOrder: AssignedOrders | undefined | null;
+
+      if (assignId) {
+        assignedOrder = await getRepository(AssignedOrders)
+          .createQueryBuilder("assignedOrders")
+          .leftJoinAndSelect("assignedOrders.order", "order")
+          .leftJoinAndSelect("assignedOrders.drivers", "drivers")
+          .leftJoinAndSelect("assignedOrders.valetVehicle", "valetVehicle")
+          .leftJoinAndSelect("assignedOrders.dealership", "dealership")
+          .where("assignedOrders.assignId = :assignId", { assignId })
+          .getOne();
+      } else if (orderId) {
+        assignedOrder = await getRepository(AssignedOrders)
+          .createQueryBuilder("assignedOrders")
+          .leftJoinAndSelect("assignedOrders.order", "order")
+          .leftJoinAndSelect("assignedOrders.drivers", "drivers")
+          // .leftJoinAndSelect("assignedOrders.valetVehicle", "valetVehicle")
+          .leftJoinAndSelect("assignedOrders.dealership", "dealership")
+          .where("order.orderId = :orderId", { orderId })
+          .getOne();
+      }
+
+      if (!assignedOrder) {
+        throw new ApolloError("Assigned order not found");
+      }
+
       return assignedOrder;
     } catch (error) {
-      throw new Error("Failed to get assigned order " + error);
+      throw new ApolloError("Failed to get assigned order " + error);
     }
   }
-
+  // on Initiated status, the order is not yet accepted by the driver
   @Mutation(() => AssignedOrders)
   @Authorized()
   async assignOrder(
@@ -138,25 +170,25 @@ export class AssignResolver {
   ) {
     try {
       const orderData = await Order.findOne({ where: { orderId: order } });
-      if (!orderData) throw new Error("Order not found");
+      if (!orderData) throw new ApolloError("Order not found");
 
       if (orderData.orderStatus === OrderStatus.ACCEPTED.valueOf()) {
-        throw new Error("Order has already been accepted");
+        throw new ApolloError("Order has already been accepted");
       }
 
-      const assignedByData = await User.findOne({
-        where: { userId: ctx.payload.userId },
+      const assignedByData = await getUser({
+        username: (<any>ctx.payload).username,
       });
-      if (!assignedByData) throw new Error("Manager not found");
+      if (!assignedByData) throw new ApolloError("Manager not found");
 
-      if (drivers.length === 0) throw new Error("Please select a driver");
+      if (drivers.length === 0) throw new ApolloError("Please select a driver");
 
       const dvrs = await getRepository(User)
         .createQueryBuilder("user")
         .where("user.userId IN (:...drivers)", { drivers })
         .getMany();
 
-      if (dvrs.length === 0) throw new Error("Driver not found");
+      if (dvrs.length === 0) throw new ApolloError("Driver not found");
 
       let valetVehicle = null;
       if (valetVehicleId) {
@@ -165,24 +197,27 @@ export class AssignResolver {
         });
       }
 
-      if (!dealershipId) throw new Error("Dealership ID is required");
+      if (!dealershipId) throw new ApolloError("Dealership ID is required");
       const dealership = await Dealership.findOne({
         where: { dealershipId: dealershipId },
       });
-      if (!dealership) throw new Error("Dealership not found");
+      if (!dealership) throw new ApolloError("Dealership not found");
 
       const driverData = await Promise.all(dvrs);
       const customerData = await User.findOne({ where: { userId: customer } });
-      if (!customerData) throw new Error("Customer not found");
+      if (!customerData) throw new ApolloError("Customer not found");
 
       const getAssignedOrder = await getRepository(AssignedOrders)
         .createQueryBuilder("assignedOrders")
         .leftJoinAndSelect("assignedOrders.order", "order")
         .where("order.orderId = :orderId", { orderId: orderData.orderId })
+        .andWhere("assignedOrders.assignStatus = :assignStatus", {
+          assignStatus: AssignStatus.INITIATED,
+        })
         .getMany();
 
       if (getAssignedOrder.length > 0) {
-        throw new Error("Order has already been assigned");
+        throw new ApolloError("Order has already been assigned");
       }
 
       const assignedOrder = AssignedOrders.create({
@@ -209,10 +244,11 @@ export class AssignResolver {
       return assignedOrder;
     } catch (error) {
       // console.log(error);
-      throw new Error("Failed to assign order" + " " + error);
+      throw new ApolloError("Failed to assign order" + " " + error);
     }
   }
 
+  // accept pending order
   @Authorized()
   @Mutation(() => AssignedOrders)
   async acceptOrder(
@@ -221,13 +257,11 @@ export class AssignResolver {
     @PubSub("ORDER_ASSIGNED") publish: any
   ) {
     try {
-      const user = await User.findOne({
-        where: { userId: (<any>ctx.payload).userId },
-      });
-      if (!user) throw new Error("User not found");
+      const user = await getUser({ username: (<any>ctx.payload).username });
+      if (!user) throw new ApolloError("User not found");
 
       if (user.accountType !== AccountType.DRIVER.valueOf()) {
-        throw new Error("User is not a driver");
+        throw new ApolloError("User is not a driver");
       }
 
       const assignedOrder = await createQueryBuilder(
@@ -237,33 +271,30 @@ export class AssignResolver {
         .leftJoinAndSelect("assignedOrders.order", "order")
         .leftJoinAndSelect("assignedOrders.drivers", "drivers")
         .where("drivers.userId = :userId", { userId: user.userId })
-        .andWhere("assignedOrders.assignStatus = :assignStatus", {
-          assignStatus: AssignStatus.PENDING,
-        })
-        .andWhere("order.orderStatus = :orderStatus", {
-          orderStatus: OrderStatus.PENDING,
-        })
         .andWhere("assignedOrders.assignId = :assignId", {
           assignId: assignId,
         })
         .getOne();
 
-      if (!assignedOrder) throw new Error("Assigned order not found");
+      if (!assignedOrder) throw new ApolloError("Assigned order not found");
 
       if (assignedOrder.assignStatus !== AssignStatus.PENDING.valueOf()) {
-        throw new Error("Order has already been accepted");
+        throw new ApolloError("Order has already been accepted");
       }
 
-      user.order = [...user.order, assignedOrder] as Order[];
+      user.order = [...user.order, assignedOrder.order];
       await user.save();
 
-      const order = await Order.findOne({
-        where: { orderId: assignedOrder.order.orderId },
-      });
-      if (!order) throw new Error("Order not found");
+      const order = assignedOrder.order;
+      if (!order) throw new ApolloError("Order not found");
 
       order.orderStatus = OrderStatus.ACCEPTED;
       order.driver = user;
+      const getCustomer = await getUser({
+        userId: assignedOrder.customerId,
+      });
+      if (!getCustomer) throw new ApolloError("Customer not found");
+      order.customer = getCustomer;
       await order.save();
 
       assignedOrder.assignStatus = AssignStatus.ACCEPTED;
@@ -271,10 +302,12 @@ export class AssignResolver {
       assignedOrder.acceptedById = user.userId;
       await assignedOrder.save();
 
-      // await publish(assignedOrder);
       return assignedOrder;
     } catch (error) {
-      throw new Error("Failed to accept order" + " " + error);
+      console.error("Failed to accept order:", error);
+      throw new ApolloError("Failed to accept order", "ACCEPT_ORDER_ERROR", {
+        originalError: error,
+      });
     }
   }
 
@@ -286,27 +319,25 @@ export class AssignResolver {
     @PubSub("ORDER_ASSIGNED") publish: any
   ) {
     try {
-      const user = await User.findOne({
-        where: { userId: (<any>ctx.payload).userId },
-      });
-      if (!user) throw new Error("User not found");
+      const user = await getUser({ username: (<any>ctx.payload).username });
+      if (!user) throw new ApolloError("User not found");
 
       if (user.accountType !== AccountType.DRIVER.valueOf()) {
-        throw new Error("User is not a driver");
+        throw new ApolloError("User is not a driver");
       }
 
       const assignedOrder = await AssignedOrders.findOne({
         relations: ["order"],
         where: { assignId: assignId },
       });
-      if (!assignedOrder) throw new Error("Assigned order not found");
+      if (!assignedOrder) throw new ApolloError("Assigned order not found");
 
       if (assignedOrder.assignStatus !== AssignStatus.PENDING.valueOf()) {
-        throw new Error("Order has already been accepted");
+        throw new ApolloError("Order has already been accepted");
       }
 
       if (assignedOrder.rejectedBy.includes(user)) {
-        throw new Error("Order has already been rejected");
+        throw new ApolloError("Order has already been rejected");
       }
 
       if (assignedOrder.rejectedBy.length === 0) {
@@ -318,7 +349,7 @@ export class AssignResolver {
       // await publish(assignedOrder);
       return assignedOrder;
     } catch (error) {
-      throw new Error("Failed to reject order" + " " + error);
+      throw new ApolloError("Failed to reject order" + " " + error);
     }
   }
 
@@ -326,16 +357,14 @@ export class AssignResolver {
   @Query(() => [AssignedOrders])
   async getUnconfirmedOrders(@Ctx() ctx: MyContext) {
     try {
-      const user = await User.findOne({
-        where: { userId: (<any>ctx.payload).userId },
-      });
+      const user = await getUser({ username: (<any>ctx.payload).username });
 
       if (!user) {
-        throw new Error("User not found");
+        throw new ApolloError("User not found");
       }
 
       if (user.accountType !== AccountType.DRIVER.valueOf()) {
-        throw new Error("User is not a driver");
+        throw new ApolloError("User is not a driver");
       }
 
       const assignedOrder = await AssignedOrders.createQueryBuilder(
@@ -348,23 +377,25 @@ export class AssignResolver {
         .andWhere("assignedOrders.assignStatus = :assignStatus", {
           assignStatus: AssignStatus.PENDING,
         })
+        .andWhere("drivers.userId = :userId", { userId: user.userId })
         .getMany();
-      
+
       if (assignedOrder.length === 0) {
-        throw new Error("No orders found");
+        throw new ApolloError("No orders found");
       }
 
-      const unconfirmedOrders = assignedOrder.filter((order) => {
-        return order.drivers.some((driver) => {
-          return driver.userId === user.userId;
-        });
-      });
+      // const unconfirmedOrders = assignedOrder.filter((order) => {
+      //   return order.drivers.some((driver) => {
+      //     return driver.userId === user.userId;
+      //   });
+      // });
 
-      if (unconfirmedOrders.length === 0) {
-        throw new Error("No unconfirmed orders found");
-      }
+      // if (unconfirmedOrders.length === 0) {
+      //   throw new ApolloError("No unconfirmed orders found");
+      // }
 
-      return unconfirmedOrders;
+      // return unconfirmedOrders;
+      return assignedOrder;
     } catch (error) {
       console.error(error);
 
@@ -387,14 +418,10 @@ export class AssignResolver {
     @Ctx() ctx: MyContext
   ) {
     try {
-      const user = await User.findOne({
-        where: { userId: (<any>ctx.payload).userId },
-      });
-
+      const user = await getUser({ username: (<any>ctx.payload).username });
       if (!user) {
         return new ApolloError("User not found", "USER_NOT_FOUND");
       }
-
       if (user.accountType !== AccountType.DRIVER.valueOf()) {
         return new ApolloError("User is not a driver", "USER_NOT_DRIVER");
       }
@@ -444,12 +471,7 @@ export class AssignResolver {
       const decode = await usernameToken(
         context.connectionParams.Authorization
       );
-      const user = await getRepository(User)
-        .createQueryBuilder("user")
-        .where("user.username = :username", {
-          username: (<any>decode).username,
-        })
-        .getOne();
+      const user = await getUser({ username: (<any>decode).username });
       console.log(payload);
       if (user?.accountType === AccountType.DRIVER.valueOf()) return true;
       return false;

@@ -56,19 +56,19 @@ export class VehicleCheck extends BaseEntity {
   @Column({ nullable: true })
   gasLevel!: number;
 
-  @Field(() => Valet, { nullable: true })
-  @ManyToOne(() => Valet, (valet) => valet.customerVehiclChecks, {
-    eager: true,
-    createForeignKeyConstraints: false,
-    nullable: true,
-  })
-  customerVehicleChecks!: Valet;
+  // @Field(() => Valet, { nullable: true })
+  // @ManyToOne(() => Valet, (valet) => valet.customerVehiclChecks, {
+  //   eager: true,
+  //   createForeignKeyConstraints: false,
+  //   nullable: true,
+  // })
+  // customerVehicleChecks!: Valet;
 
-  @Field(() => Valet, { nullable: true })
-  @ManyToOne(() => Valet, (valet) => valet.valetVehicleChecks, {
-    eager: true,
-    createForeignKeyConstraints: false,
-    nullable: true,
-  })
-  valetVehicleChecks!: Valet;
+  // @Field(() => Valet, { nullable: true })
+  // @ManyToOne(() => Valet, (valet) => valet.valetVehicleChecks, {
+  //   eager: true,
+  //   createForeignKeyConstraints: false,
+  //   nullable: true,
+  // })
+  // valetVehicleChecks!: Valet;
 }

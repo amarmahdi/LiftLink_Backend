@@ -2,14 +2,14 @@ import { InputType, Field } from "type-graphql";
 
 @InputType()
 export class ValetInput {
-  @Field()
-  customerId!: string;
+  @Field({ nullable: true })
+  customerId?: string;
 
-  @Field()
-  dealershipId!: string;
+  @Field({ nullable: true })
+  dealershipId?: string;
 
-  @Field()
-  orderId!: string;
+  @Field({ nullable: true })
+  orderId?: string;
 
   @Field()
   frontImage!: string;

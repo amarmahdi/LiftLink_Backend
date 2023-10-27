@@ -244,4 +244,37 @@ export class OrderResolver {
       throw new Error("Failed to get order");
     }
   }
+
+  @Authorized()
+  @Query(() => [Order])
+  async getOrdersByUser(
+    @Ctx() { payload }: MyContext,
+  ) {
+    try {
+      const user = await User.findOne({
+        where: { username: (<any>payload).username },
+      });
+
+      if (!user) {
+        throw new Error("User not found!");
+      }
+
+      const orders = await getRepository(Order)
+        .createQueryBuilder("order")
+        .leftJoinAndSelect("order.customer", "customer")
+        .leftJoinAndSelect("customer.profilePicture", "profilePicture")
+        .leftJoinAndSelect("order.vehicle", "vehicle")
+        .leftJoinAndSelect("vehicle.carImage", "carImage")
+        .leftJoinAndSelect("order.serviceType", "serviceType")
+        .leftJoinAndSelect("order.dealership", "dealership")
+        .where("customer.userId = :userId", { userId: user.userId })
+        .orderBy("order.createdDate", "DESC")
+        .getMany();
+
+      return orders;
+    } catch (error) {
+      console.error(error);
+      throw new Error("Failed to get orders");
+    }
+  }
 }

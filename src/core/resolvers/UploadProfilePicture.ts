@@ -10,6 +10,7 @@ import {
 import { MyContext } from "../helpers/MyContext";
 import { ProfilePicture } from "../entity/ProfilePicture";
 import { User } from "../entity/User";
+import { getRepository } from "typeorm";
 
 @Resolver()
 export class UploadProfilePicture {
@@ -18,17 +19,31 @@ export class UploadProfilePicture {
     @Arg("userId") userId: string,
     @Ctx() ctx: MyContext
   ) {
-    const user = await User.findOne({ where: { userId: userId } });
-    if (!user) throw new Error("User not found");
-    const profilePicture = await ProfilePicture.findOne({
-      where: {
-        user: {
-          userId,
-        },
-      },
-    });
-    if (!profilePicture) throw new Error("Profile picture not found");
-    return profilePicture;
+    try {
+      const user = await getRepository(User)
+        .createQueryBuilder("user")
+        .where("user.userId = :userId", { userId: userId })
+        .getOne();
+
+      if (!user) {
+        throw new Error("User not found");
+      }
+
+      const profilePicture = await getRepository(ProfilePicture)
+        .createQueryBuilder("profilePicture")
+        .leftJoinAndSelect("profilePicture.user", "user")
+        .where("user.userId = :userId", { userId: userId })
+        .getOne();
+
+      if (!profilePicture) {
+        throw new Error("Profile picture not found");
+      }
+
+      return profilePicture;
+    } catch (error) {
+      console.error("Error getting profile picture:", error);
+      throw new Error("Failed to get profile picture");
+    }
   }
 
   @Mutation(() => ProfilePicture)
@@ -38,34 +53,43 @@ export class UploadProfilePicture {
     @Ctx() ctx: MyContext
   ) {
     try {
-      const user = await User.findOne({
-        where: { username: (<any>ctx.payload).username },
-      });
-      // console.log("user: ", user)
-      if (!user) throw new Error("User not found");
-      const profilePicture = await ProfilePicture.find({
-        relations: ["user"],
-        where: {
-          user: {
-            userId: user.userId,
-          },
-          isCurrent: true,
-        },
-      });
-      profilePicture.forEach(async (pic) => {
-        await ProfilePicture.update(
-          { pictureId: pic.pictureId },
-          { isCurrent: false }
-        );
-      });
+      const user = await getRepository(User)
+        .createQueryBuilder("user")
+        .where("user.username = :username", { username: ctx.payload.username })
+        .getOne();
+
+      if (!user) {
+        throw new Error("User not found");
+      }
+
+      const profilePicture = await getRepository(ProfilePicture)
+        .createQueryBuilder("profilePicture")
+        .leftJoinAndSelect("profilePicture.user", "user")
+        .where("user.userId = :userId", { userId: user.userId })
+        .andWhere("profilePicture.isCurrent = :isCurrent", { isCurrent: true })
+        .getMany();
+
+      await Promise.all(
+        profilePicture.map((pic: any) =>
+          getRepository(ProfilePicture)
+            .createQueryBuilder()
+            .update(ProfilePicture)
+            .set({ isCurrent: false })
+            .where("pictureId = :pictureId", { pictureId: pic.pictureId })
+            .execute()
+        )
+      );
+
       const newProfilePicture = await ProfilePicture.create({
         pictureLink: pictureLink,
         user: user,
         isCurrent: true,
       }).save();
+
       return newProfilePicture;
-    } catch (err: any) {
-      throw new Error(err);
+    } catch (error) {
+      console.error("Error uploading profile picture:", error);
+      throw new Error("Failed to upload profile picture");
     }
   }
 }
