@@ -140,6 +140,7 @@ export class DealershipResolver {
         where: { dealershipName },
       });
       if (!dealership) throw new Error("Dealership not found");
+      console.log(user.userId);
       dealership.dealershipName = dealershipName;
       dealership.dealershipAddress = dealershipAddress;
       dealership.dealershipCity = dealershipCity;
