@@ -23,16 +23,16 @@ export class ServicePackages extends BaseEntity {
   @Column()
   servicePackageDescription!: string;
 
-  @Field()
-  @Column()
+  @Field({ nullable: true})
+  @Column({ nullable: true})
   servicePackagePrice!: string;
 
-  @Field()
-  @Column()
+  @Field({ nullable: true})
+  @Column({ nullable: true})
   servicePackageDuration!: string;
 
-  @Field()
-  @Column()
+  @Field({ nullable: true})
+  @Column({ nullable: true})
   servicePackageType!: string;
 
   @Field()
