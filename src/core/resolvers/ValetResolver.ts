@@ -1,4 +1,16 @@
-import { Resolver, Query, Mutation, Authorized, Arg, Ctx } from "type-graphql";
+import {
+  Resolver,
+  Query,
+  Mutation,
+  Authorized,
+  Arg,
+  Ctx,
+  Subscription,
+  Field,
+  ObjectType,
+  PubSub,
+  Root,
+} from "type-graphql";
 import { User } from "../entity/User";
 import { AccountType } from "../types/AccountTypes";
 import { Dealership } from "../entity/Dealership";
@@ -9,6 +21,7 @@ import { ValetInput } from "../inputs/ValetInput";
 import { createQueryBuilder, getConnection, getRepository } from "typeorm";
 import { memoryUsage } from "process";
 import { getUser } from "./UserInfo";
+import { verifyAccessToken } from "../helpers/authChecker";
 
 const stateTransitions = {
   [ValetStatus.IN_PROGRESS.valueOf()]: [
@@ -41,6 +54,18 @@ const stateTransitions = {
   // ],
 };
 
+@ObjectType()
+class LatLong {
+  @Field()
+  id!: string;
+
+  @Field()
+  latitude!: number;
+
+  @Field()
+  longitude!: number;
+}
+
 @Resolver()
 export class ValetResolver {
   @Authorized()
@@ -56,11 +81,7 @@ export class ValetResolver {
     }
   }
 
-  async createValetFun(
-    inputs: ValetInput,
-    customer: User,
-    driver: User,
-  ) {
+  async createValetFun(inputs: ValetInput, customer: User, driver: User) {
     const existsInCustomer = await Valet.find({
       where: {
         customer: customer as any,
@@ -424,5 +445,56 @@ export class ValetResolver {
     }
 
     return;
+  }
+
+  @Authorized()
+  @Mutation(() => LatLong)
+  async sendDriversLocation(
+    @Ctx() ctx: any,
+    @Arg("valetId") valetId: string,
+    @Arg("latitude") latitude: number,
+    @Arg("longitude") longitude: number,
+    @PubSub("DRIVER_LOCATION") publish: any
+  ) {
+    try {
+      const valet = await getRepository(Valet)
+        .createQueryBuilder("valet")
+        .leftJoinAndSelect("valet.customer", "customer")
+        .leftJoinAndSelect("valet.dealership", "dealership")
+        .where("valet.valetId = :valetId", { valetId })
+        .getOne();
+
+      console.log(valet?.customer.userId, "valet");
+      publish({
+        id: valet?.customer.userId,
+        latitude,
+        longitude,
+      });
+      publish({
+        id: valet?.dealership.dealershipId,
+        latitude,
+        longitude,
+      });
+      return {
+        id: valet?.customer.userId,
+        latitude,
+        longitude,
+      };
+    } catch (err: any) {
+      console.error(err);
+      throw new Error(`Failed to get driver location: ${err.message}`);
+    }
+  }
+
+  @Subscription(() => LatLong || null, {
+    topics: "DRIVER_LOCATION",
+    filter: ({ payload, args, context }) => {
+      const token = context.connectionParams.Authorization;
+      const userId = (<any>verifyAccessToken(token.split(" ")[1])).userId;
+      return payload.id === userId;
+    },
+  })
+  async driverLocation(@Ctx() ctx: any, @Root() payload: LatLong) {
+    return payload;
   }
 }

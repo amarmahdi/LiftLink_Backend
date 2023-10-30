@@ -181,13 +181,13 @@ export class UserResolver {
   async generateTokens(user: User, register: boolean = false) {
     try {
       const accessToken = sign(
-        { userId: user.userId, username: user.username },
+        { userId: user.userId, username: user.username, accountType: user.accountType },
         process.env.ACCESS_TOKEN_SECRET!,
         { expiresIn: "30d" }
       );
 
       const refreshToken = sign(
-        { userId: user.userId, username: user.username },
+        { userId: user.userId, username: user.username, accountType: user.accountType },
         process.env.REFRESH_TOKEN_SECRET!,
         { expiresIn: "1y" }
       );
