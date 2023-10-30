@@ -96,6 +96,7 @@ export class DealershipResolver {
         dealershipState,
         dealershipZipCode,
         dealershipCountry,
+        createdBy: user.userId,
       }).save();
       user.dealerships = [...user.dealerships, dealership];
       await user.save();
@@ -147,8 +148,7 @@ export class DealershipResolver {
       dealership.dealershipState = dealershipState;
       dealership.dealershipZipCode = dealershipZipCode;
       dealership.dealershipCountry = dealershipCountry;
-      dealership.createdBy = user.userId;
-      await dealership.save();
+      await dealership.save();  
       return dealership;
     } catch (error) {
       console.error(error);
