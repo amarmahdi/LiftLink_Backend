@@ -146,6 +146,7 @@ export class DealershipResolver {
       dealership.dealershipState = dealershipState;
       dealership.dealershipZipCode = dealershipZipCode;
       dealership.dealershipCountry = dealershipCountry;
+      dealership.createdBy = user.userId;
       await dealership.save();
       return dealership;
     } catch (error) {
