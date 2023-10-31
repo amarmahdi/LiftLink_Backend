@@ -211,8 +211,6 @@ export class AssignResolver {
         if (!dealership.car.some((car) => car.available === true)) {
           throw new ApolloError("Dealership has no available vehicle");
         }
-      } else {
-        throw new ApolloError("Dealership has no available vehicle");
       }
 
       const getAssignedOrder = await getRepository(AssignedOrders)
