@@ -132,15 +132,17 @@ export class AssignResolver {
           .leftJoinAndSelect("assignedOrders.dealership", "dealership")
           .where("assignedOrders.assignId = :assignId", { assignId })
           .getOne();
+        console.log('from assign id', assignedOrder)
       } else if (orderId) {
         assignedOrder = await getRepository(AssignedOrders)
           .createQueryBuilder("assignedOrders")
-          .leftJoinAndSelect("assignedOrders.order", "order")
           .leftJoinAndSelect("assignedOrders.drivers", "drivers")
           // .leftJoinAndSelect("assignedOrders.valetVehicle", "valetVehicle")
           .leftJoinAndSelect("assignedOrders.dealership", "dealership")
+          .leftJoinAndSelect("assignedOrders.order", "order")
           .where("order.orderId = :orderId", { orderId })
           .getOne();
+          console.log('from order id', assignedOrder)
       }
 
       if (!assignedOrder) {

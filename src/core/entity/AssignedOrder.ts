@@ -89,7 +89,7 @@ export class AssignedOrders extends BaseEntity {
   rejectDate!: Date;
 
   @Field(() => CarInfo, { nullable: true })
-  @OneToMany(() => CarInfo, (carInfo) => carInfo.assignedOrders, {
+  @ManyToOne(() => CarInfo, (carInfo) => carInfo.assignedOrders, {
     nullable: true,
   })
   valetVehicle!: CarInfo;
