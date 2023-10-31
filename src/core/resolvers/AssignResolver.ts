@@ -137,7 +137,7 @@ export class AssignResolver {
           .createQueryBuilder("assignedOrders")
           .leftJoinAndSelect("assignedOrders.order", "order")
           .leftJoinAndSelect("assignedOrders.drivers", "drivers")
-          // .leftJoinAndSelect("assignedOrders.valetVehicle", "valetVehicle")
+          .leftJoinAndSelect("assignedOrders.valetVehicle", "valetVehicle")
           .leftJoinAndSelect("assignedOrders.dealership", "dealership")
           .where("order.orderId = :orderId", { orderId })
           .getOne();
