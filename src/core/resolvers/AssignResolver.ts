@@ -130,6 +130,7 @@ export class AssignResolver {
           .leftJoinAndSelect("assignedOrders.drivers", "drivers")
           .leftJoinAndSelect("assignedOrders.valetVehicle", "valetVehicle")
           .leftJoinAndSelect("assignedOrders.dealership", "dealership")
+          .leftJoinAndSelect("valetVehicle.carImage", "carImage")
           .where("assignedOrders.assignId = :assignId", { assignId })
           .getOne();
         console.log('from assign id', assignedOrder)
@@ -140,6 +141,7 @@ export class AssignResolver {
           .leftJoinAndSelect("assignedOrders.valetVehicle", "valetVehicle")
           .leftJoinAndSelect("assignedOrders.dealership", "dealership")
           .leftJoinAndSelect("assignedOrders.order", "order")
+          .leftJoinAndSelect("valetVehicle.carImage", "carImage")
           .where("order.orderId = :orderId", { orderId })
           .getOne();
           console.log('from order id', assignedOrder)
