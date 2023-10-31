@@ -207,7 +207,7 @@ export class AssignResolver {
       const customerData = await User.findOne({ where: { userId: customer } });
       if (!customerData) throw new ApolloError("Customer not found");
 
-      if (orderData.valetVehicleRequest && dealership.car !== null) {
+      if (orderData.valetVehicleRequest && dealership.car !== undefined || null) {
         if (!dealership.car.some((car) => car.available === true)) {
           throw new ApolloError("Dealership has no available vehicle");
         }
