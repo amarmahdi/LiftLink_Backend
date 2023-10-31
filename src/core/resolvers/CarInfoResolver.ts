@@ -115,7 +115,26 @@ export class CarInfoResolver {
       ) {
         if (!dealershipId) throw new Error("Dealership ID is required");
       }
-
+      
+      const getVehicle = await getRepository(CarInfo)
+        .createQueryBuilder("carInfo")
+        .leftJoinAndSelect("carInfo.dealership", "dealership")
+        .where("dealership.dealershipId = :dealershipId", {
+          dealershipId: dealershipId,
+        }).getMany();
+        
+      if (getVehicle.length > 0) {
+        if (getVehicle.some((vehicle) => vehicle.carVin === carVin)) {
+          throw new Error("Car VIN already exists");
+        }
+        if (getVehicle.some((vehicle) => vehicle.plateNumber === plateNumber)) {
+          throw new Error("Plate number already exists");
+        }
+        if (getVehicle.some((vehicle) => vehicle.carRegistration === carRegistration)) {
+          throw new Error("Car registration already exists");
+        }
+      }
+      
       const vehicleImage = await VehicleImage.create({
         imageLink: carImage,
       }).save();
