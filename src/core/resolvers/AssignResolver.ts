@@ -191,10 +191,14 @@ export class AssignResolver {
       if (dvrs.length === 0) throw new ApolloError("Driver not found");
 
       let valetVehicle = null;
-      if (valetVehicleId) {
-        valetVehicle = await CarInfo.findOne({
+      if (orderData.valetVehicleRequest) {
+        if (!valetVehicleId) throw new ApolloError("Valet vehicle is requested");
+        const valetVehicleData = await CarInfo.findOne({
           where: { carId: valetVehicleId },
         });
+        if (!valetVehicleData) throw new ApolloError("Valet vehicle not found");
+        if (!valetVehicleData?.available) throw new ApolloError("Car not available");
+        valetVehicle = valetVehicleData;
       }
 
       if (!dealershipId) throw new ApolloError("Dealership ID is required");
@@ -206,16 +210,6 @@ export class AssignResolver {
       const driverData = await Promise.all(dvrs);
       const customerData = await User.findOne({ where: { userId: customer } });
       if (!customerData) throw new ApolloError("Customer not found");
-
-      if (
-        (orderData.valetVehicleRequest && dealership.car !== undefined) ||
-        null ||
-        []
-      ) {
-        if (!dealership.car.some((car) => car.available === true)) {
-          throw new ApolloError("Dealership has no available vehicle");
-        }
-      }
 
       const getAssignedOrder = await getRepository(AssignedOrders)
         .createQueryBuilder("assignedOrders")
