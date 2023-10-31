@@ -141,6 +141,8 @@ export class AssignResolver {
           .leftJoinAndSelect("assignedOrders.dealership", "dealership")
           .where("order.orderId = :orderId", { orderId })
           .getOne();
+        
+        console.log(assignedOrder);
       }
 
       if (!assignedOrder) {
