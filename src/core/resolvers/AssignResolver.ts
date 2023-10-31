@@ -137,7 +137,7 @@ export class AssignResolver {
         assignedOrder = await getRepository(AssignedOrders)
           .createQueryBuilder("assignedOrders")
           .leftJoinAndSelect("assignedOrders.drivers", "drivers")
-          // .leftJoinAndSelect("assignedOrders.valetVehicle", "valetVehicle")
+          .leftJoinAndSelect("assignedOrders.valetVehicle", "valetVehicle")
           .leftJoinAndSelect("assignedOrders.dealership", "dealership")
           .leftJoinAndSelect("assignedOrders.order", "order")
           .where("order.orderId = :orderId", { orderId })
