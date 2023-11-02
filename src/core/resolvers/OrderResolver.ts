@@ -109,6 +109,7 @@ export class OrderResolver {
       const vehicleObj = await getRepository(CarInfo)
         .createQueryBuilder("vehicle")
         .leftJoinAndSelect("vehicle.user", "user")
+        .leftJoinAndSelect("vehicle.carImage", "carImage")
         .where("vehicle.carId = :vehicleId", { vehicleId })
         .getOne();
 
@@ -120,21 +121,21 @@ export class OrderResolver {
         throw new Error("Vehicle does not belong to user!");
       }
 
-      // const order = await getRepository(Order)
-      //   .createQueryBuilder("order")
-      //   .leftJoinAndSelect("order.customer", "customer")
-      //   .leftJoinAndSelect("order.vehicle", "vehicle")
-      //   .where("customer.userId = :userId", { userId: customerObj.userId })
-      //   .andWhere("vehicle.carId = :vehicleId", { vehicleId })
-      //   .getOne();
+      const order = await getRepository(Order)
+        .createQueryBuilder("order")
+        .leftJoinAndSelect("order.customer", "customer")
+        .leftJoinAndSelect("order.vehicle", "vehicle")
+        .where("customer.userId = :userId", { userId: customerObj.userId })
+        .andWhere("vehicle.carId = :vehicleId", { vehicleId })
+        .getOne();
 
-      // if (
-      //   order &&
-      //   order.orderStatus !== OrderStatus.CANCELLED &&
-      //   order.orderStatus !== OrderStatus.COMPLETED
-      // ) {
-      //   throw new Error("Order already exists!");
-      // }
+      if (
+        order &&
+        order.orderStatus !== OrderStatus.CANCELLED &&
+        order.orderStatus !== OrderStatus.COMPLETED
+      ) {
+        throw new Error("Order already exists!");
+      }
 
       const orderCreate = await Order.create({
         orderDeliveryDate,
