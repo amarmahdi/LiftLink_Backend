@@ -38,15 +38,7 @@ export class DealershipResolver {
   async getDealership(@Ctx() ctx: MyContext) {
     try {
       const username = (<any>ctx.payload).username;
-      const user = await User.findOne({
-        where: { username },
-        relations: [
-          "dealerships",
-          "dealerships.servicePackages",
-          "dealerships.assignedOrders",
-          "dealerships.car",
-        ],
-      });
+      const user = await getUser({ username });
       if (!user) throw new Error("User not found");
       return user.dealerships;
     } catch (error) {
@@ -70,8 +62,8 @@ export class DealershipResolver {
     @Ctx() ctx: MyContext
   ) {
     try {
-      const user = await User.findOne({
-        where: { username: (<any>ctx.payload).username },
+      const user = await getUser({
+        username: (<any>ctx.payload).username,
       });
       if (!user) throw new Error("User not found");
       if (!user.isDealership) throw new Error("User is not a dealership");
@@ -122,8 +114,8 @@ export class DealershipResolver {
     @Ctx() ctx: MyContext
   ) {
     try {
-      const user = await User.findOne({
-        where: { username: (<any>ctx.payload).username },
+      const user = await getUser({
+        username: (<any>ctx.payload).username,
       });
       if (!user) throw new Error("User not found");
       if (!user.isDealership) throw new Error("User is not a dealership");
@@ -148,7 +140,7 @@ export class DealershipResolver {
       dealership.dealershipState = dealershipState;
       dealership.dealershipZipCode = dealershipZipCode;
       dealership.dealershipCountry = dealershipCountry;
-      await dealership.save();  
+      await dealership.save();
       return dealership;
     } catch (error) {
       console.error(error);
@@ -166,14 +158,14 @@ export class DealershipResolver {
   ) {
     try {
       const dusername = (<any>ctx.payload).username;
-      const duser = await User.findOne({ where: { username: dusername } });
+      const duser = await getUser({ username: dusername });
       if (!duser) throw new Error("User not found");
       if (!duser.isDealership) throw new Error("User is not a dealership");
       const dealership = await Dealership.findOne({
         where: { dealershipName },
       });
       if (!dealership) throw new Error("Dealership not found");
-      const user = await User.findOne({ where: { userId } });
+      const user = await getUser({ userId });
       if (!user) throw new Error("User not found");
       if (
         user.accountType !== AccountType.DRIVER.valueOf() &&
@@ -321,7 +313,7 @@ export class DealershipResolver {
     try {
       if (!dealershipName) throw new Error("Dealership name is required");
       const dusername = (<any>ctx.payload).username;
-      const duser = await User.findOne({ where: { username: dusername } });
+      const duser = await getUser({ username: dusername });
       if (!duser) throw new Error("User not found");
 
       const dealership = await getRepository(Dealership)
@@ -416,7 +408,7 @@ export class DealershipResolver {
     try {
       if (!dealershipId) throw new Error("Dealership name is required");
       const dusername = (<any>ctx.payload).username;
-      const duser = await User.findOne({ where: { username: dusername } });
+      const duser = await getUser({ username: dusername });
       if (!duser) throw new Error("User not found");
       const dealership = await Dealership.findOne({ where: { dealershipId } });
       if (!dealership) throw new Error("Dealership not found");
@@ -427,14 +419,16 @@ export class DealershipResolver {
       );
       if (!existsInAccount)
         throw new Error(`This account is not in dealership`);
-      const users = await User.find({
-        where: {
-          dealerships: {
-            dealershipId: dealership.dealershipId,
-          },
-          accountType: AccountType.DRIVER,
-        },
-      });
+      const users = await getRepository(User)
+        .createQueryBuilder("user")
+        .leftJoinAndSelect("user.dealerships", "dealership")
+        .where("dealership.dealershipId = :dealershipId", {
+          dealershipId: dealership.dealershipId,
+        })
+        .andWhere("user.accountType = :accountType", {
+          accountType: AccountType.DRIVER.valueOf(),
+        })
+        .getMany();
       return users.length;
     } catch (error) {
       console.error(error);
@@ -451,7 +445,7 @@ export class DealershipResolver {
     try {
       if (!dealershipId) throw new Error("Dealership name is required");
       const dusername = (<any>ctx.payload).username;
-      const duser = await User.findOne({ where: { username: dusername } });
+      const duser = await getUser({ username: dusername });
       if (!duser) throw new Error("User not found");
       const dealership = await Dealership.findOne({ where: { dealershipId } });
       if (!dealership) throw new Error("Dealership not found");
@@ -462,14 +456,16 @@ export class DealershipResolver {
       );
       if (!existsInAccount)
         throw new Error(`This account is not in dealership`);
-      const users = await User.find({
-        where: {
-          dealerships: {
-            dealershipId: dealership.dealershipId,
-          },
-          accountType: AccountType.MANAGER,
-        },
-      });
+      const users = await getRepository(User)
+        .createQueryBuilder("user")
+        .leftJoinAndSelect("user.dealerships", "dealership")
+        .where("dealership.dealershipId = :dealershipId", {
+          dealershipId: dealership.dealershipId,
+        })
+        .andWhere("user.accountType = :accountType", {
+          accountType: AccountType.MANAGER.valueOf(),
+        })
+        .getMany();
       return users.length;
     } catch (error) {
       console.error(error);

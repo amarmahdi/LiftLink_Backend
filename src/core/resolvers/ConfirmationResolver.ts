@@ -15,22 +15,41 @@ import {
 import { MyContext } from "../helpers/MyContext";
 import { AccountType } from "../types/AccountTypes";
 import { Dealership } from "../entity/Dealership";
+import { getUser } from "./UserInfo";
+import { getRepository } from "typeorm";
 
 @Resolver()
 export class ConfirmationResolver {
   @Authorized()
   @Query(() => [UserDealershipConfirmation])
   async getConfirmation(@Ctx() ctx: any) {
-    const username = ctx.payload.username;
-    const user = await User.findOne({ where: { username } });
-    return UserDealershipConfirmation.find({
-      where: {
-        user: {
-          userId: user?.userId,
-        },
-        confirmationStatus: ConfirmationStatus.PENDING,
-      },
-    });
+    try {
+      const username = ctx.payload.username;
+      const user = await getUser({ username });
+
+      if (!user) {
+        throw new Error(`User with username ${username} not found`);
+      }
+
+      const confirmation = await getRepository(UserDealershipConfirmation)
+        .createQueryBuilder("confirmation")
+        .leftJoinAndSelect("confirmation.user", "user")
+        .leftJoinAndSelect("confirmation.dealership", "dealership")
+        .where("confirmation.confirmationStatus = :confirmationStatus", {
+          confirmationStatus: ConfirmationStatus.PENDING,
+        })
+        .andWhere("user.userId = :userId", { userId: user.userId })
+        .getMany();
+
+      if (!confirmation.length) {
+        throw new Error(`No pending confirmations found for user ${username}`);
+      }
+
+      return confirmation;
+    } catch (error) {
+      console.error("Error getting confirmation: ", error);
+      throw new Error("Error getting confirmation");
+    }
   }
 
   @Authorized()
@@ -41,7 +60,7 @@ export class ConfirmationResolver {
   ) {
     try {
       const username = (<any>ctx.payload).username;
-      const user = await User.findOne({ where: { username } });
+      const user = await getUser({ username });
       if (!user) throw new Error("User not found");
       if (
         user.accountType !== AccountType.MANAGER.valueOf() &&
@@ -86,7 +105,7 @@ export class ConfirmationResolver {
     try {
       if (confirmationId === "") throw new Error("Confirmation ID is empty");
       const username = (<any>ctx.payload).username;
-      const user = await User.findOne({ where: { username } });
+      const user = await getUser({ username });
       if (!user) throw new Error("User not found");
       if (
         user.accountType !== AccountType.MANAGER.valueOf() &&
@@ -94,7 +113,8 @@ export class ConfirmationResolver {
       ) {
         throw new Error("User is not a manager or driver");
       }
-      if (user.isDealership) throw new Error("This account cannot be a dealership");
+      if (user.isDealership)
+        throw new Error("This account cannot be a dealership");
       const getConfirmation = await UserDealershipConfirmation.findOne({
         where: {
           user: {
@@ -119,7 +139,7 @@ export class ConfirmationResolver {
   async unconfirmedRequests(@Ctx() ctx: MyContext) {
     try {
       const username = (<any>ctx.payload).username;
-      const user = await User.findOne({ where: { username } });
+      const user = await getUser({ username });
       if (!user) throw new Error("User not found");
       const getConfirmation = await UserDealershipConfirmation.find({
         where: {
@@ -144,7 +164,7 @@ export class ConfirmationResolver {
   // ) {
   //   try {
   //     const username = (<any>ctx.payload).username;
-  //     const user = await User.findOne({ where: { username } });
+  //     const user = await getUser({ username })
   //     if (!user) throw new Error("User not found");
   //     const getConfirmation = await UserDealershipConfirmation.find({
   //       where: {

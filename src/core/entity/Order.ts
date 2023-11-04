@@ -13,9 +13,12 @@ import { User } from "./User";
 import { CarInfo } from "./CarInfo";
 import { ServicePackages } from "./ServicePackages";
 import { Dealership } from "./Dealership";
+import { PaymentIntent } from "./PaymentIntent";
+import { AssignedOrders } from "./AssignedOrder";
 
 export enum OrderStatus {
   INITIATED = "INITIATED",
+  RETURN_INITIATED = "RETURN_INITIATED",
   ASSIGNED = "ASSIGNED",
   PENDING = "PENDING",
   IN_PROGRESS = "IN_PROGRESS",
@@ -64,6 +67,12 @@ export class Order extends BaseEntity {
   @Column()
   notes!: string;
 
+  @Field(() => PaymentIntent, { nullable: true })
+  @ManyToOne(() => PaymentIntent, (payment) => payment.order, {
+    createForeignKeyConstraints: false,
+  })
+  payment!: PaymentIntent;
+
   @Field(() => CarInfo, { nullable: true })
   @ManyToOne(() => CarInfo, (carInfo) => carInfo.order, {
     nullable: true,
@@ -80,6 +89,13 @@ export class Order extends BaseEntity {
     createForeignKeyConstraints: false,
   })
   dealership!: Dealership;
+
+  @Field(()=> AssignedOrders, { nullable: true })
+  @ManyToOne(() => AssignedOrders, (assignedOrders) => assignedOrders.order, {
+    createForeignKeyConstraints: false,
+    nullable: true,
+  })
+  assigned!: AssignedOrders;
 
   @Field({ nullable: true })
   @Column({ default: false })

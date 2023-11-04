@@ -15,6 +15,7 @@ import { User } from "../entity/User";
 import { AccountType } from "../types/AccountTypes";
 import { Dealership } from "../entity/Dealership";
 import { getRepository } from "typeorm";
+import { getUser } from "./UserInfo";
 
 @Resolver()
 export class CarInfoResolver {
@@ -25,7 +26,7 @@ export class CarInfoResolver {
     @Ctx() ctx: MyContext
   ) {
     const username = (<any>ctx.payload).username;
-    const user = await User.findOne({ where: { username } });
+    const user = await getUser({ username });
     if (!user) throw new Error("User not found");
     if (user.accountType === AccountType.CUSTOMER.valueOf()) {
       const carInfo = await CarInfo.find({
@@ -59,7 +60,7 @@ export class CarInfoResolver {
   ) {
     try {
       const username = (<any>ctx.payload).username;
-      const user = await User.findOne({ where: { username } });
+      const user = await getUser({ username });
       if (!user) throw new Error("User not found");
       if (!dealershipId) throw new Error("Dealership ID is required");
       const dealership = await getRepository(Dealership)
@@ -105,9 +106,7 @@ export class CarInfoResolver {
     @Ctx() ctx: MyContext
   ) {
     try {
-      const user = await User.findOne({
-        where: { username: (<any>ctx.payload).username },
-      });
+      const user = await getUser({ username: (<any>ctx.payload).username });
       if (!user) throw new Error("User not found");
       if (
         user.accountType === AccountType.MANAGER.valueOf() ||
@@ -115,14 +114,15 @@ export class CarInfoResolver {
       ) {
         if (!dealershipId) throw new Error("Dealership ID is required");
       }
-      
+
       const getVehicle = await getRepository(CarInfo)
         .createQueryBuilder("carInfo")
         .leftJoinAndSelect("carInfo.dealership", "dealership")
         .where("dealership.dealershipId = :dealershipId", {
           dealershipId: dealershipId,
-        }).getMany();
-        
+        })
+        .getMany();
+
       if (getVehicle.length > 0) {
         if (getVehicle.some((vehicle) => vehicle.carVin === carVin)) {
           throw new Error("Car VIN already exists");
@@ -130,11 +130,15 @@ export class CarInfoResolver {
         if (getVehicle.some((vehicle) => vehicle.plateNumber === plateNumber)) {
           throw new Error("Plate number already exists");
         }
-        if (getVehicle.some((vehicle) => vehicle.carRegistration === carRegistration)) {
+        if (
+          getVehicle.some(
+            (vehicle) => vehicle.carRegistration === carRegistration
+          )
+        ) {
           throw new Error("Car registration already exists");
         }
       }
-      
+
       const vehicleImage = await VehicleImage.create({
         imageLink: carImage,
       }).save();
@@ -193,12 +197,10 @@ export class CarInfoResolver {
   @Authorized()
   async makeCarAvailable(
     @Ctx() ctx: MyContext,
-    @Arg("dealershipId", { nullable: true }) dealershipId: string,
+    @Arg("dealershipId", { nullable: true }) dealershipId: string
   ) {
     try {
-      const user = await User.findOne({
-        where: { username: (<any>ctx.payload).username },
-      });
+      const user = await getUser({ username: (<any>ctx.payload).username });
       if (!user) throw new Error("User not found");
       if (
         user.accountType === AccountType.MANAGER.valueOf() ||

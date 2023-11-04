@@ -2,6 +2,7 @@ import {
   Arg,
   Authorized,
   Ctx,
+  Int,
   Mutation,
   PubSub,
   Query,
@@ -21,6 +22,13 @@ import { AssignOrderInput } from "../inputs/AssignOrderInput";
 import { createQueryBuilder, getRepository } from "typeorm";
 import usernameToken from "../helpers/usernameToken";
 import { getUser } from "./UserInfo";
+import { PaymentIntent } from "../entity/PaymentIntent";
+import { createPaymentDbEntry, createPaymentIntent } from "./PaymentResolver";
+
+export enum AssignType {
+  INITIAL = "INITIAL",
+  RETURN = "RETURN",
+}
 
 @Resolver()
 export class AssignResolver {
@@ -133,7 +141,7 @@ export class AssignResolver {
           .leftJoinAndSelect("valetVehicle.carImage", "carImage")
           .where("assignedOrders.assignId = :assignId", { assignId })
           .getOne();
-        console.log('from assign id', assignedOrder)
+        console.log("from assign id", assignedOrder);
       } else if (orderId) {
         assignedOrder = await getRepository(AssignedOrders)
           .createQueryBuilder("assignedOrders")
@@ -144,7 +152,7 @@ export class AssignResolver {
           .leftJoinAndSelect("valetVehicle.carImage", "carImage")
           .where("order.orderId = :orderId", { orderId })
           .getOne();
-          console.log('from order id', assignedOrder)
+        console.log("from order id", assignedOrder);
       }
 
       if (!assignedOrder) {
@@ -165,15 +173,22 @@ export class AssignResolver {
       order,
       drivers,
       customer,
-      status,
       valetVehicleId,
       dealershipId,
     }: AssignOrderInput,
+    @Arg("type") type: AssignType,
+    @Arg("paymentAmount", { nullable: true }) paymentAmount: string,
     @Ctx() ctx: MyContext,
     @PubSub("ORDER_ASSIGNED") publish: any
   ) {
+    if (type === AssignType.RETURN.valueOf()) {
+      if (!paymentAmount) throw new ApolloError("Payment amount is required");
+    }
     try {
-      const orderData = await Order.findOne({ where: { orderId: order } });
+      const orderData = await getRepository(Order)
+        .createQueryBuilder("order")
+        .where("order.orderId = :orderId", { orderId: order })
+        .getOne();
       if (!orderData) throw new ApolloError("Order not found");
 
       if (orderData.orderStatus === OrderStatus.ACCEPTED.valueOf()) {
@@ -195,13 +210,20 @@ export class AssignResolver {
       if (dvrs.length === 0) throw new ApolloError("Driver not found");
 
       let valetVehicle = null;
-      if (orderData.valetVehicleRequest) {
-        if (!valetVehicleId) throw new ApolloError("Valet vehicle is requested");
-        const valetVehicleData = await CarInfo.findOne({
-          where: { carId: valetVehicleId },
-        });
+      if (
+        orderData.valetVehicleRequest &&
+        type !== AssignType.RETURN.valueOf()
+      ) {
+        if (!valetVehicleId)
+          throw new ApolloError("Valet vehicle is requested");
+        const valetVehicleData = await getRepository(CarInfo)
+          .createQueryBuilder("carInfo")
+          .leftJoinAndSelect("carInfo.carImage", "carImage")
+          .where("carInfo.carId = :carId", { carId: valetVehicleId })
+          .getOne();
         if (!valetVehicleData) throw new ApolloError("Valet vehicle not found");
-        if (!valetVehicleData?.available) throw new ApolloError("Car not available");
+        if (!valetVehicleData?.available)
+          throw new ApolloError("Car not available");
         valetVehicle = valetVehicleData;
       }
 
@@ -212,7 +234,7 @@ export class AssignResolver {
       if (!dealership) throw new ApolloError("Dealership not found");
 
       const driverData = await Promise.all(dvrs);
-      const customerData = await User.findOne({ where: { userId: customer } });
+      const customerData = await getUser({ userId: customer });
       if (!customerData) throw new ApolloError("Customer not found");
 
       const getAssignedOrder = await getRepository(AssignedOrders)
@@ -220,7 +242,7 @@ export class AssignResolver {
         .leftJoinAndSelect("assignedOrders.order", "order")
         .where("order.orderId = :orderId", { orderId: orderData.orderId })
         .andWhere("assignedOrders.assignStatus = :assignStatus", {
-          assignStatus: AssignStatus.INITIATED,
+          assignStatus: AssignStatus.RETURN_INITIATED.valueOf(),
         })
         .getMany();
 
@@ -229,15 +251,48 @@ export class AssignResolver {
       }
 
       const assignedOrder = AssignedOrders.create({
-        order: orderData,
+        order: [orderData],
         assignedById: assignedByData.userId,
         drivers: driverData,
         customerId: customerData.userId,
-        assignStatus: status,
+        assignStatus: AssignStatus.ASSIGNED,
         assignDate: new Date(),
         valetVehicle: valetVehicle as any,
         dealership: dealership as any,
       });
+
+      if (type === AssignType.RETURN.valueOf()) {
+        const createPayment = await createPaymentIntent(
+          Number.parseInt(paymentAmount)
+        );
+        if (!createPayment) throw new ApolloError("Payment not found");
+
+        const clientSecret = createPayment.client_secret;
+        const paymentIntentId = createPayment.id;
+        const paymentMethodId = createPayment.payment_method;
+        const paymentStatus = createPayment.status;
+        const currency = createPayment.currency;
+
+        const payment = await PaymentIntent.create({
+          amount: createPayment.amount,
+          currency: currency,
+          customer: customerData,
+          order: [orderData],
+          paymentIntentClientSecret: clientSecret!,
+          paymentIntentId,
+          paymentMethodId: paymentMethodId! as string,
+          paymentStatus,
+          paymentIntentCreated: new Date(),
+        }).save();
+
+        if (!payment) throw new ApolloError("Payment not created");
+
+        assignedOrder.assignStatus = AssignStatus.RETURN_INITIATED;
+        assignedOrder.order[0].payment = payment;
+        assignedOrder.order[0].orderStatus = OrderStatus.RETURN_INITIATED;
+        await assignedOrder.save();
+        await assignedOrder.order[0].save();
+      }
 
       orderData.orderStatus = OrderStatus.PENDING;
       await orderData.save();
@@ -286,14 +341,14 @@ export class AssignResolver {
 
       if (!assignedOrder) throw new ApolloError("Assigned order not found");
 
-      if (assignedOrder.assignStatus !== AssignStatus.PENDING.valueOf()) {
+      if (assignedOrder.assignStatus !== AssignStatus.ASSIGNED.valueOf()) {
         throw new ApolloError("Order has already been accepted");
       }
 
-      user.order = [...user.order, assignedOrder.order];
+      user.order = [...user.order, assignedOrder.order[0]];
       await user.save();
 
-      const order = assignedOrder.order;
+      const order = assignedOrder.order[0];
       if (!order) throw new ApolloError("Order not found");
 
       order.orderStatus = OrderStatus.ACCEPTED;
@@ -308,6 +363,7 @@ export class AssignResolver {
       assignedOrder.assignStatus = AssignStatus.ACCEPTED;
       assignedOrder.acceptDate = new Date();
       assignedOrder.acceptedById = user.userId;
+      assignedOrder.drivers = [user];
       await assignedOrder.save();
 
       return assignedOrder;
@@ -382,8 +438,8 @@ export class AssignResolver {
         .leftJoinAndSelect("assignedOrders.dealership", "dealership")
         .leftJoinAndSelect("assignedOrders.order", "order")
         .leftJoinAndSelect("assignedOrders.rejectedBy", "rejectedBy")
-        .andWhere("assignedOrders.assignStatus = :assignStatus", {
-          assignStatus: AssignStatus.PENDING,
+        .where("assignedOrders.assignStatus = :assignStatus", {
+          assignStatus: AssignStatus.ASSIGNED,
         })
         .andWhere("drivers.userId = :userId", { userId: user.userId })
         .getMany();

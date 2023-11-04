@@ -82,15 +82,24 @@ export class ValetResolver {
   }
 
   async createValetFun(inputs: ValetInput, customer: User, driver: User) {
-    const existsInCustomer = await Valet.find({
-      where: {
-        customer: customer as any,
-        valetStatus:
-          ValetStatus.COMPLETED ||
-          ValetStatus.CANCELLED ||
+    const existsInCustomer = await getRepository(Valet)
+      .createQueryBuilder("valet")
+      .leftJoinAndSelect("valet.customer", "customer")
+      .leftJoinAndSelect("valet.dealership", "dealership")
+      .leftJoinAndSelect("valet.order", "order")
+      .leftJoinAndSelect("order.vehicle", "vehicle")
+      .leftJoinAndSelect("valet.driver", "driver")
+      .leftJoinAndSelect("valet.customerVehiclChecks", "customerVehiclChecks")
+      .leftJoinAndSelect("valet.valetVehicleChecks", "valetVehicleChecks")
+      .where("valet.customer.userId = :userId", { userId: customer.userId })
+      .andWhere("valet.valetStatus IN (:...valetStatus)", {
+        valetStatus: [
+          ValetStatus.COMPLETED,
+          ValetStatus.CANCELLED,
           ValetStatus.IN_PROGRESS,
-      },
-    });
+        ],
+      })
+      .getMany();
     if (existsInCustomer.length > 0) {
       throw new Error(
         `Valet already in ${existsInCustomer[0].valetStatus} state`
@@ -100,23 +109,48 @@ export class ValetResolver {
     if (driver.isOnService) throw new Error("Driver is on service");
 
     const [dealership, order, valetExists] = await Promise.all([
-      Dealership.findOne({
-        where: {
+      // Dealership.findOne({
+      //   where: {
+      //     dealershipId: inputs.dealershipId,
+      //   },
+      // }),
+      getRepository(Dealership)
+        .createQueryBuilder("dealership")
+        .where("dealership.dealershipId = :dealershipId", {
           dealershipId: inputs.dealershipId,
-        },
-      }),
-      Order.findOne({
-        where: {
-          orderId: inputs.orderId,
-        },
-      }),
-      Valet.findOne({
-        where: {
-          order: {
-            orderId: inputs.orderId,
-          },
-        },
-      }),
+        })
+        .getOne(),
+      // Order.findOne({
+      //   where: {
+      //     orderId: inputs.orderId,
+      //   },
+      // }),
+      getRepository(Order)
+        .createQueryBuilder("order")
+        .leftJoinAndSelect("order.customer", "customer")
+        .leftJoinAndSelect("order.vehicle", "vehicle")
+        .leftJoinAndSelect("order.serviceType", "serviceType")
+        .leftJoinAndSelect("order.dealership", "dealership")
+        .where("order.orderId = :orderId", { orderId: inputs.orderId })
+        .getOne(),
+      // Valet.findOne({
+      //   where: {
+      //     order: {
+      //       orderId: inputs.orderId,
+      //     },
+      //   },
+      // }),
+      getRepository(Valet)
+        .createQueryBuilder("valet")
+        .leftJoinAndSelect("valet.customer", "customer")
+        .leftJoinAndSelect("valet.dealership", "dealership")
+        .leftJoinAndSelect("valet.order", "order")
+        .leftJoinAndSelect("order.vehicle", "vehicle")
+        .leftJoinAndSelect("valet.driver", "driver")
+        .leftJoinAndSelect("valet.customerVehiclChecks", "customerVehiclChecks")
+        .leftJoinAndSelect("valet.valetVehicleChecks", "valetVehicleChecks")
+        .where("order.orderId = :orderId", { orderId: inputs.orderId })
+        .getOne(),
     ]);
 
     if (!dealership) throw new Error("Dealership not found");
@@ -135,15 +169,15 @@ export class ValetResolver {
     if (!inputs.mileage) throw new Error("Please enter the mileage");
     if (!inputs.gasLevel) throw new Error("Please enter the gas level");
 
-    const dealershipUserData = await createQueryBuilder(User, "user")
-      .leftJoinAndSelect("user.dealerships", "dealerships")
-      .where("dealerships.dealershipId = :dealershipId", {
-        dealershipId: inputs.dealershipId,
-      })
-      .andWhere("user.accountType = :accountType", {
-        accountType: AccountType.ADMIN.valueOf(),
-      })
-      .getOne();
+    // const dealershipUserData = await createQueryBuilder(User, "user")
+    //   .leftJoinAndSelect("user.dealerships", "dealerships")
+    //   .where("dealerships.dealershipId = :dealershipId", {
+    //     dealershipId: inputs.dealershipId,
+    //   })
+    //   .andWhere("user.accountType = :accountType", {
+    //     accountType: AccountType.ADMIN.valueOf(),
+    //   })
+    //   .getOne();
 
     const queryRunner = getConnection().createQueryRunner();
     await queryRunner.connect();
@@ -217,11 +251,14 @@ export class ValetResolver {
         valet.valetPickUpTime = new Date();
       }
 
-      const order = await Order.findOne({
-        where: {
-          orderId: inputs.orderId,
-        },
-      });
+      const order = await getRepository(Order)
+        .createQueryBuilder("order")
+        .leftJoinAndSelect("order.customer", "customer")
+        .leftJoinAndSelect("order.vehicle", "vehicle")
+        .leftJoinAndSelect("order.serviceType", "serviceType")
+        .leftJoinAndSelect("order.dealership", "dealership")
+        .where("order.orderId = :orderId", { orderId: inputs.orderId })
+        .getOne();
 
       valet.driver = driver;
       await valet.save();

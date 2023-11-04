@@ -4,6 +4,7 @@ import { Dealership } from "../entity/Dealership";
 import { User } from "../entity/User";
 import { AccountType } from "../types/AccountTypes";
 import { ServicePackageInput } from "../inputs/ServicePackageInput";
+import { getUser } from "./UserInfo";
 
 @Resolver()
 export class ServicePackageResolver {
@@ -74,9 +75,7 @@ export class ServicePackageResolver {
     @Ctx() ctx: any
   ): Promise<ServicePackages> {
     try {
-      const user = await User.findOne({
-        where: { username: ctx.payload.username },
-      });
+      const user = await getUser({ username: ctx.payload.username });
       if (!user) throw new Error("No user found");
       if (user.accountType !== AccountType.ADMIN.valueOf())
         throw new Error("Only dealerships can create service packages");

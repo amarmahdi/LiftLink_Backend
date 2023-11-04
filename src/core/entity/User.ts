@@ -22,6 +22,7 @@ import { SignOptions } from "jsonwebtoken";
 import { Order } from "./Order";
 import { VehicleCheck } from "./VehicleCheck";
 import { Valet } from "./Valet";
+import { PaymentIntent } from "./PaymentIntent";
 
 @ObjectType()
 @Entity()
@@ -165,6 +166,14 @@ export class User extends BaseEntity {
   @Field()
   @Column()
   createdAt!: Date;
+
+  @Field(() => [PaymentIntent], { nullable: true })
+  @OneToMany(() => PaymentIntent, (paymentIntent) => paymentIntent.customer, {
+    eager: true,
+    createForeignKeyConstraints: false,
+    nullable: true,
+  })
+  paymentIntent!: PaymentIntent[];
 
   generateAccessToken() {
     const payload = {

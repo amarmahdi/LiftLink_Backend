@@ -22,6 +22,7 @@ import {
   DealershipResolver,
   ConfirmationResolver,
   ServicePackageResolver,
+  PaymentResolver,
 } from "./core/resolvers";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
@@ -54,6 +55,7 @@ dotenv.config();
       ConfirmationResolver,
       ServicePackageResolver,
       ValetResolver,
+      PaymentResolver,
     ],
     validate: false,
     authChecker,

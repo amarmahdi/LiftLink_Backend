@@ -17,7 +17,9 @@ import { CarInfo } from "./CarInfo";
 import { Dealership } from "./Dealership";
 
 export enum AssignStatus {
+  RETURN_INITIATED = "return_initiated",
   INITIATED = "initiated",
+  ASSIGNED = "assigned",
   PENDING = "pending",
   ACCEPTED = "accepted",
   REJECTED = "rejected",
@@ -38,13 +40,13 @@ export class AssignedOrders extends BaseEntity {
   @Column({ nullable: true })
   assignedById!: string;
 
-  @Field(() => Order, { nullable: true })
-  @OneToOne(() => Order, (order) => order.orderId, {
+  @Field(() => [Order], { nullable: true })
+  @OneToMany(() => Order, (order) => order.assigned, {
     nullable: true,
-    eager: true,
+    createForeignKeyConstraints: false,
   })
   @JoinColumn()
-  order!: Order;
+  order!: Order[];
 
   @Field(() => [User], { nullable: true })
   @ManyToMany(() => User, (user) => user.userId, {

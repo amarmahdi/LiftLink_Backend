@@ -20,6 +20,7 @@ import { CarInfo } from "../entity/CarInfo";
 import { ServicePackages } from "../entity/ServicePackages";
 import { Dealership } from "../entity/Dealership";
 import { getRepository } from "typeorm";
+import { getUser } from "./UserInfo";
 
 @Resolver()
 export class OrderResolver {
@@ -162,9 +163,11 @@ export class OrderResolver {
     topics: "ORDER_CREATED",
     filter: async ({ payload, args, context }) => {
       try {
-        const decodedPayload = await usernameToken(context.connectionParams.Authorization);
-        const user = await User.findOne({
-          where: { username: (<any>decodedPayload).username },
+        const decodedPayload = await usernameToken(
+          context.connectionParams.Authorization
+        );
+        const user = await getUser({
+          username: (<any>decodedPayload).username,
         });
         if (
           user?.accountType === AccountType.ADMIN.valueOf() ||
@@ -248,13 +251,9 @@ export class OrderResolver {
 
   @Authorized()
   @Query(() => [Order])
-  async getOrdersByUser(
-    @Ctx() { payload }: MyContext,
-  ) {
+  async getOrdersByUser(@Ctx() { payload }: MyContext) {
     try {
-      const user = await User.findOne({
-        where: { username: (<any>payload).username },
-      });
+      const user = await getUser({ username: (<any>payload).username });
 
       if (!user) {
         throw new Error("User not found!");

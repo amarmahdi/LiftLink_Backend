@@ -66,9 +66,7 @@ export class UserResolver {
         break;
     }
 
-    const existingUser = await User.findOne({
-      where: [{ username }, { email }],
-    });
+    const existingUser = await getUser({ username, email });
     if (existingUser) {
       if (existingUser.username === username) {
         throw new Error("Username already exists");

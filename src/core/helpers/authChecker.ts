@@ -3,6 +3,7 @@ import { MyContext } from "./MyContext";
 import { verify } from "jsonwebtoken";
 import { User } from "../entity/User";
 import dotenv from "dotenv";
+import { getUser } from "../resolvers/UserInfo";
 dotenv.config();
 
 export const verifyAccessToken = (token: string) => {
@@ -46,12 +47,9 @@ export const authChecker: AuthChecker<MyContext> = async (
     if (!accessToken) {
       throw new Error("Access token missing");
     }
-    
-    const payload = verifyAccessToken(accessToken);
-    const user = await User.findOne({
-      where: { userId: (payload as any).userId },
-    });
 
+    const payload = verifyAccessToken(accessToken);
+    const user = await getUser({ userId: (<any>payload).userId });
     if (!user) {
       throw new Error("User not found");
     }
@@ -74,9 +72,7 @@ export const isAuthSubscription: MiddlewareFn<MyContext> = async (
   }
 
   try {
-    const user = await User.findOne({
-      where: { userId: payload.userId },
-    });
+    const user = await getUser({ userId: (<any>payload).userId });
 
     if (!user) {
       throw new Error("User not found");

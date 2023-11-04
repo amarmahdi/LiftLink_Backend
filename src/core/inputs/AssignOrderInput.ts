@@ -13,9 +13,6 @@ export class AssignOrderInput {
   @Field()
   customer!: string;
 
-  @Field({defaultValue: AssignStatus.PENDING })
-  status!: AssignStatus;
-
   @Field({ nullable: true })
   valetVehicleId!: string;
 

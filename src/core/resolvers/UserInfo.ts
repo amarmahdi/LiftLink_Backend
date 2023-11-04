@@ -18,11 +18,13 @@ export async function getUser({
   username,
   dealershipId,
   accountType,
+  email,
 }: {
   userId?: string | undefined;
   username?: string | undefined;
   dealershipId?: string;
   accountType?: string;
+  email?: string;
 }) {
   const userData = getRepository(User)
     .createQueryBuilder("user")
@@ -32,10 +34,18 @@ export async function getUser({
     .leftJoinAndSelect("user.address", "address")
     .leftJoinAndSelect("user.dealerships", "dealerships")
     .leftJoinAndSelect("user.order", "order")
-    .where(userId ? "user.userId = :userId" : "user.username = :username", {
-      userId,
-      username,
-    });
+    .where(
+      userId
+        ? "user.userId = :userId"
+        : email
+        ? "user.email = :email"
+        : "user.username = :username",
+      {
+        userId,
+        username,
+        email,
+      }
+    );
 
   if (dealershipId) {
     userData.andWhere("dealerships.dealershipId = :dealershipId", {
