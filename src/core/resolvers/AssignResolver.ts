@@ -292,11 +292,12 @@ export class AssignResolver {
         assignedOrder.order[0].orderStatus = OrderStatus.RETURN_INITIATED;
         await assignedOrder.save();
         await assignedOrder.order[0].save();
+      } else {
+        assignedOrder.assignStatus = AssignStatus.ASSIGNED;
+        assignedOrder.order[0].orderStatus = OrderStatus.PENDING;
+        await assignedOrder.save();
+        await assignedOrder.order[0].save();
       }
-
-      orderData.orderStatus = OrderStatus.PENDING;
-      await orderData.save();
-      await assignedOrder.save();
 
       if (valetVehicle) {
         valetVehicle.available = false;
@@ -341,12 +342,20 @@ export class AssignResolver {
 
       if (!assignedOrder) throw new ApolloError("Assigned order not found");
 
-      if (assignedOrder.assignStatus !== AssignStatus.ASSIGNED.valueOf()) {
+      if (
+        assignedOrder.assignStatus !== AssignStatus.ASSIGNED.valueOf() &&
+        assignedOrder.assignStatus !== AssignStatus.RETURN_INITIATED.valueOf()
+      ) {
+        console.log(assignedOrder.assignStatus, "from accept order");
         throw new ApolloError("Order has already been accepted");
       }
 
-      user.order = [...user.order, assignedOrder.order[0]];
-      await user.save();
+      if (
+        assignedOrder.order[0].orderStatus === OrderStatus.PENDING.valueOf()
+      ) {
+        user.order = [...user.order, assignedOrder.order[0]];
+        await user.save();
+      }
 
       const order = assignedOrder.order[0];
       if (!order) throw new ApolloError("Order not found");
@@ -438,8 +447,8 @@ export class AssignResolver {
         .leftJoinAndSelect("assignedOrders.dealership", "dealership")
         .leftJoinAndSelect("assignedOrders.order", "order")
         .leftJoinAndSelect("assignedOrders.rejectedBy", "rejectedBy")
-        .where("assignedOrders.assignStatus = :assignStatus", {
-          assignStatus: AssignStatus.ASSIGNED,
+        .where("assignedOrders.assignStatus IN (:...assignStatus)", {
+          assignStatus: [AssignStatus.ASSIGNED, AssignStatus.RETURN_INITIATED],
         })
         .andWhere("drivers.userId = :userId", { userId: user.userId })
         .getMany();
