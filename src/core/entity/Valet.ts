@@ -65,7 +65,7 @@ export class Valet extends BaseEntity {
   @JoinColumn()
   valetVehicleChecks!: VehicleCheck;
 
-  @Field({ nullable: true })
+  @Field(() => Order, { nullable: true })
   @OneToOne(() => Order, (order) => order.orderId, {
     nullable: true,
   })

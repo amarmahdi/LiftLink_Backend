@@ -1,11 +1,4 @@
-import {
-  Resolver,
-  Mutation,
-  Arg,
-  Ctx,
-  ObjectType,
-  Field,
-} from "type-graphql";
+import { Resolver, Mutation, Arg, Ctx, ObjectType, Field } from "type-graphql";
 import { User } from "../entity/User";
 import { MyContext } from "../helpers/MyContext";
 import { UserInput } from "../inputs/UserInput";
@@ -66,7 +59,11 @@ export class UserResolver {
         break;
     }
 
-    const existingUser = await getUser({ username, email });
+    const existingUser = await getUser({ username, email })
+      .then((user) => {
+        return user;
+      })
+      .catch((err) => {});
     if (existingUser) {
       if (existingUser.username === username) {
         throw new Error("Username already exists");
@@ -179,13 +176,21 @@ export class UserResolver {
   async generateTokens(user: User, register: boolean = false) {
     try {
       const accessToken = sign(
-        { userId: user.userId, username: user.username, accountType: user.accountType },
+        {
+          userId: user.userId,
+          username: user.username,
+          accountType: user.accountType,
+        },
         process.env.ACCESS_TOKEN_SECRET!,
         { expiresIn: "30d" }
       );
 
       const refreshToken = sign(
-        { userId: user.userId, username: user.username, accountType: user.accountType },
+        {
+          userId: user.userId,
+          username: user.username,
+          accountType: user.accountType,
+        },
         process.env.REFRESH_TOKEN_SECRET!,
         { expiresIn: "1y" }
       );

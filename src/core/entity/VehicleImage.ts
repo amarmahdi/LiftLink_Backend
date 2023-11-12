@@ -1,11 +1,18 @@
-import { BaseEntity, Column, Entity, OneToOne, PrimaryGeneratedColumn, JoinColumn } from 'typeorm';
-import { ObjectType, Field } from 'type-graphql';
-import { CarInfo } from './CarInfo';
+import {
+  BaseEntity,
+  Column,
+  Entity,
+  OneToOne,
+  PrimaryGeneratedColumn,
+  JoinColumn,
+} from "typeorm";
+import { ObjectType, Field } from "type-graphql";
+import { CarInfo } from "./CarInfo";
 
 @ObjectType()
 @Entity()
 export class VehicleImage extends BaseEntity {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn("uuid")
   @Field()
   imageId!: string;
 
@@ -14,7 +21,7 @@ export class VehicleImage extends BaseEntity {
   imageLink!: string;
 
   @Field(() => CarInfo, { nullable: true })
-  @OneToOne(() => CarInfo, carInfo => carInfo.carId)
+  @OneToOne(() => CarInfo, (carInfo) => carInfo.carId)
   @JoinColumn()
   car!: CarInfo;
 }
