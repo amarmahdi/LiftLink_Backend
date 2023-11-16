@@ -1,5 +1,4 @@
 import { InputType, Field } from "type-graphql";
-import { AccountType } from "../types/AccountTypes";
 
 @InputType()
 export class UserInput {
@@ -22,5 +21,5 @@ export class UserInput {
   phoneNumber?: string;
 
   @Field()
-  accountType!: AccountType;
+  accountType!: string;
 }
