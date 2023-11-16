@@ -12,22 +12,22 @@ export const searchUsers = async (
     searchTerm = searchTerm.toLowerCase();
     query = query.andWhere(
       new Brackets((qb) => {
-        qb.where(`similarity(user.username, :searchTerm) > 0.2`, {
+        qb.where("similarity(user.username, :searchTerm) > 0.2", {
           searchTerm,
         })
-          .orWhere(`similarity(user.email, :searchTerm) > 0.2`, {
+          .orWhere("similarity(user.email, :searchTerm) > 0.2", {
             searchTerm,
           })
-          .orWhere(`similarity(user.phoneNumber, :searchTerm) > 0.2`, {
+          .orWhere("similarity(user.phoneNumber, :searchTerm) > 0.2", {
             searchTerm,
           })
-          .orWhere(`similarity(user.firstName, :searchTerm) > 0.2`, {
+          .orWhere("similarity(user.firstName, :searchTerm) > 0.2", {
             searchTerm,
           })
-          .orWhere(`similarity(user.lastName, :searchTerm) > 0.2`, {
+          .orWhere("similarity(user.lastName, :searchTerm) > 0.2", {
             searchTerm,
           })
-          .orWhere(`similarity(user.accountType, :searchTerm) > 0.2`, {
+          .orWhere("similarity(user.accountType, :searchTerm) > 0.2", {
             searchTerm,
           });
       })
@@ -57,65 +57,65 @@ export const searchDealerships = async (
     searchTerm = searchTerm.toLowerCase();
     query = query.andWhere(
       new Brackets((qb) => {
-        qb.where(`similarity(dealership.dealershipName, :searchTerm) > 0.2`, {
+        qb.where("similarity(dealership.dealershipName, :searchTerm) > 0.2", {
           searchTerm,
         })
           .orWhere(
-            `similarity(dealership.dealershipEmail, :searchTerm) > 0.2`,
+            "similarity(dealership.dealershipEmail, :searchTerm) > 0.2",
             {
               searchTerm,
             }
           )
           .orWhere(
-            `similarity(dealership.dealershipPhoneNumber, :searchTerm) > 0.2`,
+            "similarity(dealership.dealershipPhoneNumber, :searchTerm) > 0.2",
             {
               searchTerm,
             }
           )
           .orWhere(
-            `similarity(dealership.dealershipAddress, :searchTerm) > 0.2`,
+            "similarity(dealership.dealershipAddress, :searchTerm) > 0.2",
             {
               searchTerm,
             }
           )
-          .orWhere(`similarity(dealership.dealershipCity, :searchTerm) > 0.2`, {
+          .orWhere("similarity(dealership.dealershipCity, :searchTerm) > 0.2", {
             searchTerm,
           })
           .orWhere(
-            `similarity(dealership.dealershipState, :searchTerm) > 0.2`,
+            "similarity(dealership.dealershipState, :searchTerm) > 0.2",
             {
               searchTerm,
             }
           )
           .orWhere(
-            `similarity(dealership.dealershipZipCode, :searchTerm) > 0.2`,
+            "similarity(dealership.dealershipZipCode, :searchTerm) > 0.2",
             {
               searchTerm,
             }
           )
           .orWhere(
-            `similarity(dealership.dealershipCountry, :searchTerm) > 0.2`,
+            "similarity(dealership.dealershipCountry, :searchTerm) > 0.2",
             {
               searchTerm,
             }
           )
           .orWhere(
-            `similarity(dealership.dealershipWebsite, :searchTerm) > 0.2`,
+            "similarity(dealership.dealershipWebsite, :searchTerm) > 0.2",
             {
               searchTerm,
             }
           )
-          .orWhere(`similarity(dealership.dealershipLogo, :searchTerm) > 0.2`, {
+          .orWhere("similarity(dealership.dealershipLogo, :searchTerm) > 0.2", {
             searchTerm,
           })
           .orWhere(
-            `similarity(dealership.dealershipDescription, :searchTerm) > 0.2`,
+            "similarity(dealership.dealershipDescription, :searchTerm) > 0.2",
             {
               searchTerm,
             }
           )
           .orWhere(
-            `similarity(dealership.dealershipHours, :searchTerm) > 0.2`,
+            "similarity(dealership.dealershipHours, :searchTerm) > 0.2",
             {
               searchTerm,
             }

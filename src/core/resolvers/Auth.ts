@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Resolver, Mutation, Arg, Ctx, ObjectType, Field } from "type-graphql";
 import { User } from "../entity/User";
 import { MyContext } from "../helpers/MyContext";
@@ -124,7 +125,7 @@ export class UserResolver {
     const isAdmin = username.includes("admin@");
     try {
       let delershipFromUsername: any;
-      let filteredUsername = isAdmin ? username.split("@")[0] : username;
+      const filteredUsername = isAdmin ? username.split("@")[0] : username;
       if (isAdmin) {
         delershipFromUsername = username.split("@")[1];
       }

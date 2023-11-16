@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Resolver, Query, Arg, Authorized, Ctx, Mutation } from "type-graphql";
 import { ServicePackages } from "../entity/ServicePackages";
 import { Dealership } from "../entity/Dealership";

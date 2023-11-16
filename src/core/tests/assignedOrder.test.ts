@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // Import necessary modules and types
 import { MyContext } from "../helpers/MyContext";
 import { AssignedOrders } from "../entity/AssignedOrder";

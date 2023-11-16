@@ -22,7 +22,7 @@ import {
   ConfirmationResolver,
   ServicePackageResolver,
   PaymentResolver,
-} from "./core/resolvers";
+} from "./core/resolvers/index";
 import dotenv from "dotenv";
 import { ValetResolver } from "./core/resolvers/ValetResolver";
 dotenv.config();

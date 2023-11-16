@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   Resolver,
   Query,
@@ -330,7 +331,7 @@ export class DealershipResolver {
         dealershipName
       );
       if (!existsInAccount)
-        throw new Error(`This account is not in dealership`);
+        throw new Error("This account is not in dealership");
 
       if (accountType) {
         accountType = accountType.toLowerCase();
@@ -417,7 +418,7 @@ export class DealershipResolver {
         dealershipId
       );
       if (!existsInAccount)
-        throw new Error(`This account is not in dealership`);
+        throw new Error("This account is not in dealership");
       const users = await getRepository(User)
         .createQueryBuilder("user")
         .leftJoinAndSelect("user.dealerships", "dealership")
@@ -454,7 +455,7 @@ export class DealershipResolver {
         dealershipId
       );
       if (!existsInAccount)
-        throw new Error(`This account is not in dealership`);
+        throw new Error("This account is not in dealership");
       const users = await getRepository(User)
         .createQueryBuilder("user")
         .leftJoinAndSelect("user.dealerships", "dealership")

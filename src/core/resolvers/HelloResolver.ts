@@ -10,7 +10,7 @@ export class HelloResolver {
   @Authorized()
   @Subscription(() => String, {
     subscribe: async function* () {
-      for await (const word of ['Hello', 'Bonjour', 'Ciao']) {
+      for await (const word of ["Hello", "Bonjour", "Ciao"]) {
         setInterval(() => {
         }, 3000);
         yield { hello: word };

@@ -10,7 +10,7 @@ import { Valet } from "./Valet";
 @Entity()
 export class Dealership extends BaseEntity {
   @Field()
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn("uuid")
   dealershipId!: string;
 
   @Field({ nullable: true })

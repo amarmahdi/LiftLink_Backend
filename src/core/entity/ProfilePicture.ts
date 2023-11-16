@@ -6,7 +6,7 @@ import { User } from "./User";
 @Entity()
 export class ProfilePicture extends BaseEntity {
   @Field()
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn("uuid")
   pictureId!: string;
 
   @Field({ nullable: true })

@@ -10,7 +10,6 @@ import {
   JoinTable,
 } from "typeorm";
 import { ObjectType, Field } from "type-graphql";
-import { AccountType } from "../types/AccountTypes";
 import { CarInfo } from "./CarInfo";
 import { Address } from "./Address";
 import { ProfilePicture } from "./ProfilePicture";
@@ -61,9 +60,9 @@ export class User extends BaseEntity {
   @Column({ unique: true, nullable: true })
   phoneNumber!: string;
 
-  @Field()
+  @Field(() => String)
   @Column()
-  accountType!: AccountType;
+  accountType!: string;
 
   @Field(() => [CarInfo], { nullable: true })
   @OneToMany(() => CarInfo, (carInfo) => carInfo.user, {
@@ -185,7 +184,7 @@ export class User extends BaseEntity {
     const options: SignOptions = {
       expiresIn: "1s",
     };
-    const accessToken = sign(JSON.stringify(payload), secret, options as any);
+    const accessToken = sign(JSON.stringify(payload), secret, options as never);
 
     return accessToken;
   }

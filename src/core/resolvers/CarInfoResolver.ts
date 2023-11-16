@@ -164,7 +164,7 @@ export class CarInfoResolver {
         user.accountType === AccountType.MANAGER.valueOf() ||
         user.accountType === AccountType.ADMIN.valueOf()
       ) {
-        let currentDealership = await Dealership.findOne({
+        const currentDealership = await Dealership.findOne({
           where: { dealershipId: dealershipId },
         });
         if (!currentDealership) throw new Error("Dealership not found");

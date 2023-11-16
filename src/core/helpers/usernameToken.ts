@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { verify } from "jsonwebtoken";
 import dotenv from "dotenv";
 dotenv.config();

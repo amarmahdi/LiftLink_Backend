@@ -1,20 +1,20 @@
-import { Entity, PrimaryGeneratedColumn, Column, BaseEntity, OneToOne, JoinColumn, OneToMany, ManyToOne } from 'typeorm';
-import { ObjectType, Field } from 'type-graphql';
-import { VehicleImage } from './VehicleImage';
-import { User } from './User';
-import { Dealership } from './Dealership';
-import { AssignedOrders } from './AssignedOrder';
-import { Order } from './Order';
+import { Entity, PrimaryGeneratedColumn, Column, BaseEntity, OneToOne, JoinColumn, OneToMany, ManyToOne } from "typeorm";
+import { ObjectType, Field } from "type-graphql";
+import { VehicleImage } from "./VehicleImage";
+import { User } from "./User";
+import { Dealership } from "./Dealership";
+import { AssignedOrders } from "./AssignedOrder";
+import { Order } from "./Order";
 
 export enum CarType {
-  LOANER = 'loaner',
-  CUSTOMER = 'customer',
+  LOANER = "loaner",
+  CUSTOMER = "customer",
 }
 
 @ObjectType()
 @Entity()
 export class CarInfo extends BaseEntity {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn("uuid")
   @Field({ nullable: true })
   carId!: string;
 
