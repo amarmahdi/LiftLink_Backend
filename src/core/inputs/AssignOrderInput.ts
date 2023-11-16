@@ -1,6 +1,4 @@
 import { InputType, Field } from "type-graphql";
-import { AssignStatus } from "../entity/AssignedOrder";
-import { ListTypeNode } from "graphql";
 
 @InputType()
 export class AssignOrderInput {

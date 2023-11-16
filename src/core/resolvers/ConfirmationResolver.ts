@@ -2,12 +2,10 @@ import {
   Resolver,
   Query,
   Mutation,
-  UseMiddleware,
   Ctx,
   Arg,
   Authorized,
 } from "type-graphql";
-import { User } from "../entity/User";
 import {
   ConfirmationStatus,
   UserDealershipConfirmation,

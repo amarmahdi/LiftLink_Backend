@@ -3,7 +3,6 @@ import {
   Query,
   Arg,
   Mutation,
-  UseMiddleware,
   Ctx,
   Authorized,
 } from "type-graphql";
@@ -11,7 +10,6 @@ import { CarInfo } from "../entity/CarInfo";
 import { VehicleImage } from "../entity/VehicleImage";
 import { CarInfoInput } from "../inputs/CarInfoInput";
 import { MyContext } from "../helpers/MyContext";
-import { User } from "../entity/User";
 import { AccountType } from "../types/AccountTypes";
 import { Dealership } from "../entity/Dealership";
 import { getRepository } from "typeorm";

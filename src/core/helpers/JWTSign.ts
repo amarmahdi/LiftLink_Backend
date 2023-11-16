@@ -1,4 +1,4 @@
-import { sign, verify } from "jsonwebtoken"
+import { sign } from "jsonwebtoken"
 
 export default (username: string) => {
   const expDate = 60 * 60 * 24 * 1000;

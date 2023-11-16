@@ -3,7 +3,7 @@ import { MyContext } from "../helpers/MyContext";
 import { AssignedOrders } from "../entity/AssignedOrder";
 import { ApolloError } from "apollo-server-core";
 import { AssignResolver } from "../resolvers/AssignResolver";
-import { describe, expect, test } from "@jest/globals";
+import { describe, expect } from "@jest/globals";
 import { mock } from "jest-mock-extended";
 import { Repository } from "typeorm";
 import * as typeorm from "typeorm";

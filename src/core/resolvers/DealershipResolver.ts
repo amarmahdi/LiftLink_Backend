@@ -3,7 +3,6 @@ import {
   Query,
   Arg,
   Mutation,
-  UseMiddleware,
   Ctx,
   Authorized,
   PubSub,
@@ -195,7 +194,7 @@ export class DealershipResolver {
 
   @Subscription(() => UserDealershipConfirmation, {
     topics: "NOTIFY_DRIVER",
-    filter: async ({ payload, args, context }) => {
+    filter: async ({ payload, context }) => {
       console.log(payload.userId, "driver");
       const driver = await getUser({
         userId: payload.payload.userId,
@@ -209,7 +208,7 @@ export class DealershipResolver {
       return true;
     },
   })
-  async notifyDriver(@Ctx() ctx: MyContext, @Root() { payload }: any) {
+  async notifyDriver(@Root() { payload }: any) {
     const dealership = await Dealership.findOne({
       where: { dealershipId: payload.dealershipId },
     });

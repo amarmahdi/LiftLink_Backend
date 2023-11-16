@@ -1,4 +1,4 @@
-import { Query, Resolver, UseMiddleware, Subscription, Root, Authorized } from "type-graphql";
+import { Query, Resolver, Subscription, Root, Authorized } from "type-graphql";
 
 @Resolver()
 export class HelloResolver {

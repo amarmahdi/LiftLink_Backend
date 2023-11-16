@@ -1,7 +1,6 @@
 import { AuthChecker, MiddlewareFn } from "type-graphql";
 import { MyContext } from "./MyContext";
 import { verify } from "jsonwebtoken";
-import { User } from "../entity/User";
 import dotenv from "dotenv";
 import { getUser } from "../resolvers/UserInfo";
 dotenv.config();
@@ -33,8 +32,7 @@ export const verifyRefreshToken = (token: string) => {
 };
 
 export const authChecker: AuthChecker<MyContext> = async (
-  { context },
-  roles
+  { context }
 ) => {
   const authorization = context.req.headers["authorization"];
 

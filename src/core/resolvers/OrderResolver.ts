@@ -4,7 +4,6 @@ import {
   Mutation,
   Subscription,
   Arg,
-  UseMiddleware,
   Ctx,
   PubSub,
   Root,
@@ -161,7 +160,7 @@ export class OrderResolver {
 
   @Subscription(() => Order, {
     topics: "ORDER_CREATED",
-    filter: async ({ payload, args, context }) => {
+    filter: async ({ context }) => {
       try {
         const decodedPayload = await usernameToken(
           context.connectionParams.Authorization

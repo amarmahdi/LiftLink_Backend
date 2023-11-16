@@ -1,7 +1,6 @@
 import { Resolver, Query, Arg, Authorized, Ctx, Mutation } from "type-graphql";
 import { ServicePackages } from "../entity/ServicePackages";
 import { Dealership } from "../entity/Dealership";
-import { User } from "../entity/User";
 import { AccountType } from "../types/AccountTypes";
 import { ServicePackageInput } from "../inputs/ServicePackageInput";
 import { getUser } from "./UserInfo";

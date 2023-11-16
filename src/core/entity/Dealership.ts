@@ -1,6 +1,5 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany, JoinColumn, BaseEntity, OneToOne } from "typeorm";
-import { ObjectType, Field, InputType } from "type-graphql";
-import { User } from "./User";
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany, BaseEntity } from "typeorm";
+import { ObjectType, Field } from "type-graphql";
 import { CarInfo } from "./CarInfo";
 import { ServicePackages } from "./ServicePackages";
 import { Order } from "./Order";

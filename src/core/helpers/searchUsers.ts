@@ -1,7 +1,6 @@
 import { Brackets } from "typeorm";
 import { User } from "../entity/User";
 import { Dealership } from "../entity/Dealership";
-import { ServicePackages } from "../entity/ServicePackages";
 
 export const searchUsers = async (
   searchTerm: string,

@@ -7,7 +7,6 @@ import {
 } from "typeorm";
 import { User } from "./User";
 import { ObjectType, Field } from "type-graphql";
-import { Valet } from "./Valet";
 
 @ObjectType()
 @Entity()

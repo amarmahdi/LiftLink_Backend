@@ -4,7 +4,6 @@ import {
   Arg,
   Mutation,
   Ctx,
-  UseMiddleware,
   Authorized,
 } from "type-graphql";
 import { MyContext } from "../helpers/MyContext";
@@ -16,8 +15,7 @@ import { getRepository } from "typeorm";
 export class UploadProfilePicture {
   @Query(() => ProfilePicture)
   async getProfilePicture(
-    @Arg("userId") userId: string,
-    @Ctx() ctx: MyContext
+    @Arg("userId") userId: string
   ) {
     try {
       const user = await getRepository(User)

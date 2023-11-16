@@ -3,9 +3,7 @@ import {
   PrimaryGeneratedColumn,
   Column,
   OneToOne,
-  OneToMany,
   ManyToOne,
-  ManyToMany,
   BaseEntity,
   JoinColumn,
 } from "typeorm";

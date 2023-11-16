@@ -3,10 +3,9 @@ import { User } from "../entity/User";
 import { MyContext } from "../helpers/MyContext";
 import { UserInput } from "../inputs/UserInput";
 import { AccountType } from "../types/AccountTypes";
-import bcrypt, { compare } from "bcrypt";
+import bcrypt from "bcrypt";
 import { sign } from "jsonwebtoken";
 import { Token, TokenType } from "../entity/Tokens";
-import { Response } from "express";
 import dotenv from "dotenv";
 import { getRepository } from "typeorm";
 import { getUser } from "./UserInfo";
@@ -23,7 +22,7 @@ class UserLoginResponse {
 
 @Resolver()
 export class UserResolver {
-  @Mutation((returns) => UserLoginResponse)
+  @Mutation(() => UserLoginResponse)
   async register(
     @Arg("input")
     { username, password, email, accountType }: UserInput,
@@ -63,7 +62,7 @@ export class UserResolver {
       .then((user) => {
         return user;
       })
-      .catch((err) => {});
+      .catch(() => {});
     if (existingUser) {
       if (existingUser.username === username) {
         throw new Error("Username already exists");
@@ -94,7 +93,7 @@ export class UserResolver {
         createdAt: new Date(),
       }).save();
 
-      const { accessToken, refreshToken } = await this.generateTokens(
+      const { accessToken } = await this.generateTokens(
         user,
         true
       );
@@ -116,7 +115,7 @@ export class UserResolver {
     }
   }
 
-  @Mutation((returns) => UserLoginResponse)
+  @Mutation(() => UserLoginResponse)
   async login(
     @Arg("username") username: string,
     @Arg("password") password: string,
@@ -142,7 +141,6 @@ export class UserResolver {
 
       const {
         accessToken,
-        refreshToken,
         user: loggedInUser,
       } = await this.generateTokens(user);
 

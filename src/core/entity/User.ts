@@ -6,11 +6,10 @@ import {
   OneToOne,
   JoinColumn,
   OneToMany,
-  ManyToOne,
   ManyToMany,
   JoinTable,
 } from "typeorm";
-import { ObjectType, Field, InputType } from "type-graphql";
+import { ObjectType, Field } from "type-graphql";
 import { AccountType } from "../types/AccountTypes";
 import { CarInfo } from "./CarInfo";
 import { Address } from "./Address";

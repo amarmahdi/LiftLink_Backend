@@ -1,6 +1,4 @@
 import { InputType, Field } from "type-graphql";
-import { VehicleImage } from "../entity/VehicleImage";
-import { CarInfo } from "../entity/CarInfo";
 import { CarType } from "../entity/CarInfo";
 
 @InputType()

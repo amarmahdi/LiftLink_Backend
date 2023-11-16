@@ -4,7 +4,6 @@ import {
   Arg,
   Ctx,
   Query,
-  UseMiddleware,
   Authorized,
 } from "type-graphql";
 import { User } from "../entity/User";
@@ -70,7 +69,7 @@ export async function getUser({
 
 @Resolver()
 export class UserInfoResolver {
-  @Query((returns) => User)
+  @Query(() => User)
   @Authorized()
   async getUserInfo(@Ctx() ctx: MyContext) {
     try {

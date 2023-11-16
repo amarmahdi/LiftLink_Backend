@@ -2,7 +2,6 @@ import {
   Arg,
   Authorized,
   Ctx,
-  Int,
   Mutation,
   PubSub,
   Query,
@@ -19,11 +18,11 @@ import { MyContext } from "../helpers/MyContext";
 import { Order, OrderStatus } from "../entity/Order";
 import { User } from "../entity/User";
 import { AssignOrderInput } from "../inputs/AssignOrderInput";
-import { createQueryBuilder, getRepository } from "typeorm";
+import { getRepository } from "typeorm";
 import usernameToken from "../helpers/usernameToken";
 import { getUser } from "./UserInfo";
 import { PaymentIntent } from "../entity/PaymentIntent";
-import { createPaymentDbEntry, createPaymentIntent } from "./PaymentResolver";
+import { createPaymentIntent } from "./PaymentResolver";
 
 export enum AssignType {
   INITIAL = "INITIAL",
@@ -101,7 +100,7 @@ export class AssignResolver {
   // Fetch all assigned orders
   @Authorized()
   @Query(() => [AssignedOrders])
-  async getAllAssignedOrders(@Ctx() ctx: MyContext) {
+  async getAllAssignedOrders(@Ctx() _ctx: MyContext) {
     try {
       // Fetching all assigned orders from the database
       const assignedOrders = await fetchAssignedOrders({});
@@ -142,7 +141,6 @@ export class AssignResolver {
   @Query(() => [AssignedOrders])
   async getAssignedOrders(
     @Arg("userId") userId: string,
-    @Ctx() ctx: MyContext
   ) {
     try {
       // Fetch the user from the database
@@ -176,7 +174,6 @@ export class AssignResolver {
     // The ID of the assigned order or the order
     @Arg("assignId", { nullable: true }) assignId: string,
     @Arg("orderId", { nullable: true }) orderId: string,
-    @Ctx() ctx: MyContext
   ) {
     try {
       // If an assignId is provided, fetch the assigned order with that ID
@@ -385,8 +382,6 @@ export class AssignResolver {
     @Arg("assignId") assignId: string,
     // The context of the request
     @Ctx() ctx: MyContext,
-    // The publish function for the ORDER_ASSIGNED subscription
-    @PubSub("ORDER_ASSIGNED") publish: any
   ) {
     try {
       // Fetch the user who is accepting the order
@@ -464,8 +459,6 @@ export class AssignResolver {
     @Arg("assignId") assignId: string,
     // The context of the request
     @Ctx() ctx: MyContext,
-    // The publish function for the ORDER_ASSIGNED subscription
-    @PubSub("ORDER_ASSIGNED") publish: any
   ) {
     try {
       // Fetch the user who is rejecting the order
@@ -616,7 +609,7 @@ export class AssignResolver {
     // The topic of the subscription is "ORDER_ASSIGNED"
     topics: "ORDER_ASSIGNED",
     // The filter function is used to determine who should receive the subscription data
-    filter: async ({ payload, args, context }) => {
+    filter: async ({ payload, context }) => {
       // Decode the authorization token to get the username
       const decode = await usernameToken(
         context.connectionParams.Authorization

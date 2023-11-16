@@ -18,8 +18,7 @@ import { Order, OrderStatus } from "../entity/Order";
 import { Valet, ValetStatus } from "../entity/Valet";
 import { VehicleCheck } from "../entity/VehicleCheck";
 import { ValetInput } from "../inputs/ValetInput";
-import { createQueryBuilder, getConnection, getRepository } from "typeorm";
-import { memoryUsage } from "process";
+import { getConnection, getRepository } from "typeorm";
 import { getUser } from "./UserInfo";
 import { verifyAccessToken } from "../helpers/authChecker";
 
@@ -487,7 +486,6 @@ export class ValetResolver {
   @Authorized()
   @Mutation(() => LatLong)
   async sendDriversLocation(
-    @Ctx() ctx: any,
     @Arg("valetId") valetId: string,
     @Arg("latitude") latitude: number,
     @Arg("longitude") longitude: number,
@@ -525,13 +523,13 @@ export class ValetResolver {
 
   @Subscription(() => LatLong || null, {
     topics: "DRIVER_LOCATION",
-    filter: ({ payload, args, context }) => {
+    filter: ({ payload, context }) => {
       const token = context.connectionParams.Authorization;
       const userId = (<any>verifyAccessToken(token.split(" ")[1])).userId;
       return payload.id === userId;
     },
   })
-  async driverLocation(@Ctx() ctx: any, @Root() payload: LatLong) {
+  async driverLocation(@Root() payload: LatLong) {
     return payload;
   }
 }

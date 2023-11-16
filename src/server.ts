@@ -9,7 +9,6 @@ import { json } from "body-parser";
 import cors from "cors";
 import { buildSchema } from "type-graphql";
 import { createConnection } from "typeorm";
-import { ApolloServerPluginLandingPageGraphQLPlayground } from "apollo-server-core";
 import { authChecker } from "./core/helpers/authChecker";
 import {
   HelloResolver,
@@ -24,7 +23,6 @@ import {
   ServicePackageResolver,
   PaymentResolver,
 } from "./core/resolvers";
-import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 import { ValetResolver } from "./core/resolvers/ValetResolver";
 dotenv.config();
@@ -105,7 +103,7 @@ dotenv.config();
     ],
   });
   await server.start();
-  app.get("/", (req, res) => {
+  app.get("/", (_req, res) => {
     res.send("Hello World");
   });
   app.use(
