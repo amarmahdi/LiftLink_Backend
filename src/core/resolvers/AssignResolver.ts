@@ -141,9 +141,7 @@ export class AssignResolver {
   // Fetch assigned orders for a user
   @Authorized()
   @Query(() => [AssignedOrders])
-  async getAssignedOrders(
-    @Arg("userId") userId: string,
-  ) {
+  async getAssignedOrders(@Arg("userId") userId: string) {
     try {
       // Fetch the user from the database
       const user = await getUser({ userId });
@@ -175,7 +173,7 @@ export class AssignResolver {
   async getAssignedOrder(
     // The ID of the assigned order or the order
     @Arg("assignId", { nullable: true }) assignId: string,
-    @Arg("orderId", { nullable: true }) orderId: string,
+    @Arg("orderId", { nullable: true }) orderId: string
   ) {
     try {
       // If an assignId is provided, fetch the assigned order with that ID
@@ -299,7 +297,14 @@ export class AssignResolver {
       // Fetch the assigned orders from the database
       const getAssignedOrders = await fetchAssignedOrders({
         orderId: orderData.orderId,
-        assignStatus: [AssignStatus.RETURN_INITIATED],
+        assignStatus: [
+          AssignStatus.ACCEPTED,
+          AssignStatus.ASSIGNED,
+          AssignStatus.COMPLETED,
+          AssignStatus.PENDING,
+          AssignStatus.STARTED,
+          AssignStatus.CANCELLED,
+        ],
       });
 
       // If the order has already been assigned, throw an error
@@ -383,7 +388,7 @@ export class AssignResolver {
     // The ID of the assigned order
     @Arg("assignId") assignId: string,
     // The context of the request
-    @Ctx() ctx: MyContext,
+    @Ctx() ctx: MyContext
   ) {
     try {
       // Fetch the user who is accepting the order
@@ -460,7 +465,7 @@ export class AssignResolver {
     // The ID of the assigned order
     @Arg("assignId") assignId: string,
     // The context of the request
-    @Ctx() ctx: MyContext,
+    @Ctx() ctx: MyContext
   ) {
     try {
       // Fetch the user who is rejecting the order
