@@ -1,5 +1,4 @@
 import { InputType, Field } from "type-graphql";
-import { CarType } from "../entity/CarInfo";
 
 @InputType()
 export class CarInfoInput {
@@ -19,7 +18,7 @@ export class CarInfoInput {
   carVin!: string;
 
   @Field()
-  carType!: CarType;
+  carType!: string;
 
   @Field()
   carImage!: string;

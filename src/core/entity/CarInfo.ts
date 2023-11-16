@@ -40,7 +40,7 @@ export class CarInfo extends BaseEntity {
 
   @Column({ nullable: true })
   @Field({ nullable: true })
-  carType!: CarType;
+  carType!: string;
 
   @Field({ nullable: true })
   @OneToOne(() => VehicleImage, vehicleImage => vehicleImage.imageId, { eager: true, createForeignKeyConstraints: false, nullable: true })

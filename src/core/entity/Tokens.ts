@@ -24,7 +24,7 @@ export class Token extends BaseEntity {
 
   @Field()
   @Column()
-  type!: TokenType;
+  type!: string;
 
   @Field()
   @Column()
