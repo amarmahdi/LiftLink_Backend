@@ -358,7 +358,7 @@ export class ValetResolver {
   @Mutation(() => Valet)
   async updateValet(
     @Arg("valetId") valetId: string,
-    @Arg("state") state: ValetStatus,
+    @Arg("state") state: string,
     @Arg("inputs", { nullable: true }) inputs: ValetInput,
     @Ctx() ctx: any
   ) {
@@ -384,7 +384,7 @@ export class ValetResolver {
       if (valet.order.driver.userId !== driver.userId) {
         throw new Error("Driver is not assigned to this valet");
       }
-      await this.validateValetStatus(valet, state);
+      await this.validateValetStatus(valet, state as ValetStatus);
 
       const date = new Date();
 
