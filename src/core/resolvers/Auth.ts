@@ -80,10 +80,12 @@ export class UserResolver {
         username: username,
         password: hashedPassword,
         email: email,
+        phoneNumber: "+1000000000",
         accountType: accType,
         dateJoined: new Date(),
         lastLogin: new Date(),
         isActive: true,
+        isVerified: true,
         isSuperuser: accountType === AccountType.ADMIN ? true : false,
         isStaff:
           accountType === AccountType.ADMIN ||
