@@ -1,13 +1,21 @@
 {
   "type": "postgres",
-  "host": "localhost",
-  "port": 5432,
-  "username": "postgres",
-  "password": "postgres",
-  "database": "liftlink",
+  "host": "db-postgresql-tor1-95066-do-user-14932346-0.c.db.ondigitalocean.com",
+  "port": 25060,
+  "username": "doadmin",
+  "password": "AVNS_CYblfrFNxgNf19jlSXn",
+  "database": "defaultdb",
+  "ssl": true,
+  "extra": {
+    "ssl": {
+      "rejectUnauthorized": false
+    }
+  },
   "entities": [
-    "src/core/entity/*.ts"
+    "src/core/entity/*.ts",
+    "./dist/core/entity/*.js"
   ],
   "synchronize": true,
-  "cache": true
+  "cache": true,
+  "autoLoadEntities": true
 }

@@ -57,7 +57,7 @@ export class User extends BaseEntity {
   profilePicture!: ProfilePicture[];
 
   @Field({ nullable: true })
-  @Column({ unique: true, nullable: true })
+  @Column({ unique: false, nullable: true })
   phoneNumber!: string;
 
   @Field(() => String)

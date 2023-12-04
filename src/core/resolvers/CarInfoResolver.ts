@@ -1,11 +1,4 @@
-import {
-  Resolver,
-  Query,
-  Arg,
-  Mutation,
-  Ctx,
-  Authorized,
-} from "type-graphql";
+import { Resolver, Query, Arg, Mutation, Ctx, Authorized } from "type-graphql";
 import { CarInfo } from "../entity/CarInfo";
 import { VehicleImage } from "../entity/VehicleImage";
 import { CarInfoInput } from "../inputs/CarInfoInput";
@@ -90,7 +83,6 @@ export class CarInfoResolver {
       carType,
       carColor,
       carModel,
-      carImage,
       carMake,
       carYear,
       carVin,
@@ -137,10 +129,6 @@ export class CarInfoResolver {
         }
       }
 
-      const vehicleImage = await VehicleImage.create({
-        imageLink: carImage,
-      }).save();
-
       const carInfo = await CarInfo.create({
         carName,
         carType,
@@ -155,7 +143,6 @@ export class CarInfoResolver {
         mileage,
         carInsurance,
         carRegistration,
-        carImage: vehicleImage,
       }).save();
 
       if (user.accountType === AccountType.CUSTOMER.valueOf()) {
@@ -172,7 +159,6 @@ export class CarInfoResolver {
       } else {
         throw new Error("User is not a manager or admin");
       }
-      carInfo.carImage = vehicleImage;
       await carInfo.save();
 
       const carInfos = await CarInfo.find({
@@ -188,6 +174,34 @@ export class CarInfoResolver {
     } catch (error) {
       console.error(error);
       throw new Error(error + " error: Failed to add car info");
+    }
+  }
+
+  @Authorized()
+  @Mutation(() => CarInfo)
+  async addVehicleImageToCarInfo(
+    @Arg("carInfoId") carInfoId: string,
+    @Arg("carImage") carImage: string
+  ) {
+    try {
+      const carInfo = await CarInfo.findOne({
+        where: { carId: carInfoId },
+      });
+      if (!carInfo) throw new Error("Car info not found");
+
+      const vehicleImage = await VehicleImage.create({
+        imageLink: carImage,
+      }).save();
+
+      carInfo.carImage = vehicleImage;
+      await carInfo.save();
+
+      return carInfo;
+    } catch (error) {
+      console.error(error);
+      throw new Error(
+        error + " error: Failed to add vehicle image to car info"
+      );
     }
   }
 

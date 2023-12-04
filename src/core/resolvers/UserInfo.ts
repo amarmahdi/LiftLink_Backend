@@ -57,15 +57,20 @@ export async function getUser({
     userData.andWhere("user.accountType = :accountType", { accountType });
   }
 
-  const user = await userData.getOne();
+  try {
+    const user = await userData.getOne();
 
-  if (!user) {
-    throw new Error("User not found");
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    user.profilePicture = user.profilePicture.filter((pic) => pic.isCurrent);
+
+    return user;
+  } catch (err) {
+    console.error(err);
+    throw new Error("Failed to get user");
   }
-
-  user.profilePicture = user.profilePicture.filter((pic) => pic.isCurrent);
-
-  return user;
 }
 
 @Resolver()
