@@ -29,6 +29,9 @@ export class UserResolver {
     { username, password, email, accountType }: UserInput,
     @Ctx() ctx: MyContext
   ) {
+    if (username.includes("@")) {
+      throw new Error("Username cannot contain @");
+    }
     let accType;
     if (!username) throw new Error("Username is required");
     if (!password) throw new Error("Password is required");
@@ -124,7 +127,7 @@ export class UserResolver {
     @Arg("password") password: string,
     @Ctx() ctx: MyContext
   ) {
-    const isAdmin = username.includes("admin@");
+    const isAdmin = username.includes("@");
     try {
       let delershipFromUsername: any;
       const filteredUsername = isAdmin ? username.split("@")[0] : username;

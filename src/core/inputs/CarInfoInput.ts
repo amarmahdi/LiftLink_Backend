@@ -3,44 +3,44 @@ import { InputType, Field } from "type-graphql";
 @InputType()
 export class CarInfoInput {
   @Field()
-  carName!: string;
+  carName?: string;
   
   @Field()
-  carModel!: string;
+  carModel?: string;
 
   @Field()
-  carColor!: string;
+  carColor?: string;
 
   @Field()
-  plateNumber!: string;
+  plateNumber?: string;
 
   @Field()
-  carVin!: string;
+  carVin?: string;
 
   @Field()
-  carType!: string;
+  carType?: string;
 
   @Field()
-  carImage!: string;
+  carImage?: string;
 
   @Field()
-  status!: string;
+  status?: string;
 
   @Field()
-  carMake!: string;
+  carMake?: string;
 
   @Field()
-  carYear!: string;
+  carYear?: string;
 
   @Field()
-  available!: boolean;
+  available?: boolean;
 
   @Field()
   mileage?: string;
 
   @Field()
-  carInsurance!: string;
+  carInsurance?: string;
 
   @Field()
-  carRegistration!: string;
+  carRegistration?: string;
 }

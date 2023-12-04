@@ -151,24 +151,23 @@ export class CarInfoResolver {
         user.accountType === AccountType.MANAGER.valueOf() ||
         user.accountType === AccountType.ADMIN.valueOf()
       ) {
-        const currentDealership = await Dealership.findOne({
-          where: { dealershipId: dealershipId },
-        });
+        const currentDealership = await getRepository(Dealership)
+          .createQueryBuilder("dealership")
+          .where("dealership.dealershipId = :dealershipId", {
+            dealershipId: dealershipId,
+          })
+          .getOne();
         if (!currentDealership) throw new Error("Dealership not found");
         carInfo.dealership = currentDealership;
       } else {
         throw new Error("User is not a manager or admin");
       }
+      if (user.car.length > 0) {
+        user.car = [...user.car, carInfo];
+      } else {
+        user.car = [carInfo];
+      }
       await carInfo.save();
-
-      const carInfos = await CarInfo.find({
-        where: {
-          user: {
-            userId: user.userId,
-          },
-        },
-      });
-      user.car = carInfos;
       await user.save();
       return carInfo;
     } catch (error) {
@@ -179,7 +178,7 @@ export class CarInfoResolver {
 
   @Authorized()
   @Mutation(() => CarInfo)
-  async addVehicleImageToCarInfo(
+  async addVehicleImage(
     @Arg("carInfoId") carInfoId: string,
     @Arg("carImage") carImage: string
   ) {
