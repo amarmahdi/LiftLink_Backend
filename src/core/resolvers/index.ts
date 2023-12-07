@@ -9,6 +9,7 @@ import { DealershipResolver } from "./DealershipResolver"
 import { ConfirmationResolver } from "./ConfirmationResolver"
 import { ServicePackageResolver } from "./ServicePackageResolver"
 import { PaymentResolver } from "./PaymentResolver"
+import { LicenseResolver } from "./LicenseResolver"
 
 export {
   UserResolver,
@@ -22,4 +23,5 @@ export {
   ConfirmationResolver,
   ServicePackageResolver,
   PaymentResolver,
+  LicenseResolver,
 }

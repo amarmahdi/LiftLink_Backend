@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Resolver, Mutation, Arg, Ctx, ObjectType, Field } from "type-graphql";
+import { Resolver, Mutation, Arg, Ctx, ObjectType, Field, Authorized } from "type-graphql";
 import { User } from "../entity/User";
 import { MyContext } from "../helpers/MyContext";
 import { UserInput } from "../inputs/UserInput";
 import { AccountType } from "../types/AccountTypes";
-import bcrypt from "bcrypt";
+import bcrypt, { compare } from "bcrypt";
 import { sign } from "jsonwebtoken";
 import { Token, TokenType } from "../entity/Tokens";
 import dotenv from "dotenv";
@@ -29,13 +29,47 @@ export class UserResolver {
     { username, password, email, accountType }: UserInput,
     @Ctx() ctx: MyContext
   ) {
+    username = username.toLowerCase();
+    email = email.toLowerCase();
     if (username.includes("@")) {
       throw new Error("Username cannot contain @");
     }
     let accType;
     if (!username) throw new Error("Username is required");
-    if (!password) throw new Error("Password is required");
+    // check if username is valid (no special characters)
+    if (!/^[a-zA-Z0-9]+$/.test(username)) {
+      throw new Error("Username must only contain letters and numbers");
+    }
+    // check if username is valid (at least 6 characters)
+    if (username.length < 6) {
+      throw new Error("Username must be at least 6 characters");
+    }
     if (!email) throw new Error("Email is required");
+    // check if email is valid
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw new Error("Please enter a valid email address");
+    }
+    if (!password) throw new Error("Password is required");
+    // check if password is valid (at least 8 characters)
+    if (password.length < 8) {
+      throw new Error("Password must be at least 8 characters");
+    }
+    // check if password is valid (at least 1 number)
+    if (!/\d/.test(password)) {
+      throw new Error("Password must contain at least 1 number");
+    }
+    // check if password is valid (at least 1 uppercase letter)
+    if (!/[A-Z]/.test(password)) {
+      throw new Error("Password must contain at least 1 uppercase letter");
+    }
+    // check if password is valid (at least 1 lowercase letter)
+    if (!/[a-z]/.test(password)) {
+      throw new Error("Password must contain at least 1 lowercase letter");
+    }
+    // check if password is valid (at least 1 special character)
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+      throw new Error("Password must contain at least 1 special character");
+    }
     if (!accountType) throw new Error("Account type is required");
     if (
       accountType !== AccountType.ADMIN &&
@@ -62,20 +96,33 @@ export class UserResolver {
         break;
     }
 
-    const existingUser = await getUser({ username, email })
-      .then((user) => {
-        return user;
+    let usernameExists: boolean = false;
+    await getUser({ username })
+      .then(() => {
+        usernameExists = true;
+        return true;
       })
-      .catch(() => {});
-    if (existingUser) {
-      if (existingUser.username === username) {
-        throw new Error("Username already exists");
-      }
-      if (existingUser.email === email) {
-        throw new Error("Email already exists");
-      }
+      .catch(() => {
+        usernameExists = false;
+        return false;
+      });
+    if (usernameExists) {
+      throw new Error("Username already exists");
     }
+    let emailExists: boolean = false;
+    await getUser({ email })
+      .then(() => {
+        emailExists = true;
+        return true;
+      })
+      .catch(() => {
+        emailExists = false;
+        return false;
+      });
 
+    if (emailExists) {
+      throw new Error("Email already exists");
+    }
     const hashedPassword = await bcrypt.hash(password, 12);
 
     try {
@@ -88,7 +135,7 @@ export class UserResolver {
         dateJoined: new Date(),
         lastLogin: new Date(),
         isActive: true,
-        isVerified: true,
+        isVerified: false,
         isSuperuser: accountType === AccountType.ADMIN ? true : false,
         isStaff:
           accountType === AccountType.ADMIN ||
@@ -99,10 +146,7 @@ export class UserResolver {
         createdAt: new Date(),
       }).save();
 
-      const { accessToken } = await this.generateTokens(
-        user,
-        true
-      );
+      const { accessToken } = await this.generateTokens(user, true);
 
       ctx.payload = {
         userId: user.userId,
@@ -123,19 +167,28 @@ export class UserResolver {
 
   @Mutation(() => UserLoginResponse)
   async login(
-    @Arg("username") username: string,
+    @Arg("username", { nullable: true }) username: string,
+    @Arg("email", { nullable: true }) email: string,
     @Arg("password") password: string,
     @Ctx() ctx: MyContext
   ) {
-    const isAdmin = username.includes("@");
+    console.log(new Date())
+    if (username) username = username.toLowerCase();
+    if (email) email = email.toLowerCase();
+    let isCombinedUsername = false
+    if (username && username.includes("@")) {
+      isCombinedUsername = true
+    }
     try {
       let delershipFromUsername: any;
-      const filteredUsername = isAdmin ? username.split("@")[0] : username;
-      if (isAdmin) {
+      const filteredUsername = isCombinedUsername ? username.split("@")[0] : username;
+      if (isCombinedUsername) {
         delershipFromUsername = username.split("@")[1];
       }
 
-      const user = await getUser({ username: filteredUsername });
+      const user = username
+        ? await getUser({ username: filteredUsername })
+        : await getUser({ email: email });
       if (!user) {
         throw new Error("Invalid login credentials");
       }
@@ -145,16 +198,14 @@ export class UserResolver {
         throw new Error("Invalid login credentials");
       }
 
-      const {
-        accessToken,
-        user: loggedInUser,
-      } = await this.generateTokens(user);
+      const { accessToken, user: loggedInUser } = await this.generateTokens(
+        user
+      );
 
-      if (isAdmin) {
+      if (isCombinedUsername) {
         const dealership = loggedInUser.dealerships.filter(
           (dealership: any) => {
-            console.log(dealership.dealershipId, delershipFromUsername);
-            return dealership.dealershipName === delershipFromUsername;
+            return dealership.dealershipName.toLowerCase() === delershipFromUsername;
           }
         );
         loggedInUser.dealerships = dealership;
@@ -238,28 +289,125 @@ export class UserResolver {
   }
 
   // change password
-  // @Mutation((returns) => Boolean)
-  // async changePassword(
-  //   @Arg("oldPassword") oldPassword: string,
-  //   @Arg("newPassword") newPassword: string,
-  //   @Ctx() ctx: MyContext
-  // ) {
-  //   try {
-  //     const user = await User.findOne({
-  //       where: { username: ctx.payload.username },
-  //     });
-  //     if (!user) throw new Error("User not found");
+  @Authorized()
+  @Mutation(() => Boolean)
+  async changePassword(
+    @Arg("oldPassword") oldPassword: string,
+    @Arg("newPassword") newPassword: string,
+    @Ctx() ctx: MyContext
+  ) {
+    try {
+      const user = await getUser({ userId: ctx.payload!.userId });
+      if (!user) throw new Error("User not found");
 
-  //     const valid = await compare(oldPassword, user.password);
-  //     if (!valid) throw new Error("Invalid password");
+      console.log("oldPassword: ", oldPassword);
 
-  //     const hashedPassword = await bcrypt.hash(newPassword, 12);
-  //     user.password = hashedPassword;
-  //     await user.save();
-  //     return true;
-  //   } catch (error) {
-  //     throw new Error("Failed to change password");
-  //   }
-  // }
-  // @Mutation((returns) => Boolean)
+      const valid = await bcrypt.compare(oldPassword, user.password);
+      if (!valid) throw new Error("Please enter the correct old password");
+
+      const matched = await compare(newPassword, user.password);
+      if (matched) throw new Error("Please enter a new password");  
+
+      // check if password is valid (at least 8 characters)
+      if (newPassword.length < 8) {
+        throw new Error("Password must be at least 8 characters");
+      }
+      // check if password is valid (at least 1 number)
+      if (!/\d/.test(newPassword)) {
+        throw new Error("Password must contain at least 1 number");
+      }
+      // check if password is valid (at least 1 uppercase letter)
+      if (!/[A-Z]/.test(newPassword)) {
+        throw new Error("Password must contain at least 1 uppercase letter");
+      }
+      // check if password is valid (at least 1 lowercase letter)
+      if (!/[a-z]/.test(newPassword)) {
+        throw new Error("Password must contain at least 1 lowercase letter");
+      }
+
+      const hashedPassword = await bcrypt.hash(newPassword, 12);
+      user.password = hashedPassword;
+      await user.save();
+      return true;
+    } catch (error) {
+      throw new Error(error.message);
+    }
+  }
+  
+  // change username
+  @Authorized()
+  @Mutation(() => Boolean)
+  async changeUsername(
+    @Arg("newUsername") newUsername: string,
+    @Ctx() ctx: MyContext
+  ) {
+    try {
+      const user = await getUser({ userId: ctx.payload!.userId });
+      if (!user) throw new Error("User not found");
+
+      // check if username is valid (no special characters)
+      if (!/^[a-zA-Z0-9]+$/.test(newUsername)) {
+        throw new Error("Username must only contain letters and numbers");
+      }
+
+      let usernameExists: boolean = false;
+      await getUser({ username: newUsername })
+        .then(() => {
+          usernameExists = true;
+          return true;
+        })
+        .catch(() => {
+          usernameExists = false;
+          return false;
+        });
+      if (usernameExists) {
+        throw new Error("Username already exists");
+      }
+
+      user.username = newUsername;
+      await user.save();
+      return true;
+    } catch (error) {
+      throw new Error(error.message);
+    }
+  }
+
+  // change email
+  @Authorized()
+  @Mutation(() => Boolean)
+  async changeEmail(
+    @Arg("newEmail") newEmail: string,
+    @Ctx() ctx: MyContext
+  ) {
+    try {
+      const user = await getUser({ userId: ctx.payload!.userId });
+      if (!user) throw new Error("User not found");
+
+      // check if email is valid
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
+        throw new Error("Please enter a valid email address");
+      }
+
+      let emailExists: boolean = false;
+      await getUser({ email: newEmail })
+        .then(() => {
+          emailExists = true;
+          return true;
+        })
+        .catch(() => {
+          emailExists = false;
+          return false;
+        });
+
+      if (emailExists) {
+        throw new Error("Email already exists");
+      }
+
+      user.email = newEmail;
+      await user.save();
+      return true;
+    } catch (error) {
+      throw new Error(error.message);
+    }
+  }
 }

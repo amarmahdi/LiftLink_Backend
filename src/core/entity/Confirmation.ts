@@ -54,5 +54,21 @@ export class UserDealershipConfirmation extends BaseEntity {
 
   @Field({ nullable: true })
   @Column({ nullable: true })
+  fromUserId!: string;
+
+  @Field({ nullable: true })
+  @Column({ nullable: true })
+  fromDealershipId!: string;
+
+  @Field({ nullable: true })
+  @Column({ nullable: true })
+  toUserId!: string;
+
+  @Field({ nullable: true })
+  @Column({ nullable: true })
+  toDealershipId!: string;
+
+  @Field({ nullable: true })
+  @Column({ nullable: true })
   updatedAt!: Date;
 }

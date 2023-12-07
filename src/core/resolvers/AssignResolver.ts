@@ -33,6 +33,7 @@ export enum AssignType {
 
 interface FetchAssignedOrdersOptions {
   userId?: string;
+  accountType?: AccountType;
   assignStatus?: AssignStatus[];
   dealershipId?: string;
   assignId?: string;
@@ -45,55 +46,75 @@ export const fetchAssignedOrders = async (
   options: FetchAssignedOrdersOptions,
   getOne: boolean = false
 ) => {
-  const queryBuilder = getRepository(AssignedOrders)
-    .createQueryBuilder("assignedOrders")
-    .leftJoinAndSelect("assignedOrders.order", "order")
-    .leftJoinAndSelect("assignedOrders.drivers", "drivers")
-    .leftJoinAndSelect("assignedOrders.dealership", "dealership");
-
-  if (options.userId) {
-    queryBuilder.andWhere(
-      "assignedOrders.customerId = :customerId OR assignedOrders.driverId = :driverId",
-      {
-        customerId: options.userId,
+  try {
+    if (options.userId && !options.accountType) {
+      throw new Error("Account type is required");
+    }
+    
+    const queryBuilder = getRepository(AssignedOrders)
+      .createQueryBuilder("assignedOrders")
+      .leftJoinAndSelect("assignedOrders.order", "order")
+      .leftJoinAndSelect("assignedOrders.drivers", "drivers")
+      .leftJoinAndSelect("assignedOrders.dealership", "dealership")
+      .leftJoinAndSelect("assignedOrders.valetVehicle", "valetVehicle");
+    
+    if (
+      options.userId &&
+      options.accountType === AccountType.DRIVER.valueOf()
+    ) {
+      queryBuilder.andWhere("drivers.userId = :driverId", {
         driverId: options.userId,
-      }
-    );
-  }
+      });
+    }
 
-  if (options.assignStatus) {
-    queryBuilder.andWhere("assignedOrders.assignStatus IN (:...assignStatus)", {
-      assignStatus: options.assignStatus,
-    });
-  }
+    if (
+      options.userId &&
+      options.accountType === AccountType.CUSTOMER.valueOf()
+    ) {
+      queryBuilder.andWhere("assignedOrders.customerId = :customerId", {
+        customerId: options.userId,
+      });
+    }
 
-  if (options.dealershipId) {
-    queryBuilder.andWhere("assignedOrders.dealershipId = :dealershipId", {
-      dealershipId: options.dealershipId,
-    });
-  }
+    if (options.assignStatus) {
+      queryBuilder.andWhere(
+        "assignedOrders.assignStatus IN (:...assignStatus)",
+        {
+          assignStatus: options.assignStatus,
+        }
+      );
+    }
 
-  if (options.assignId) {
-    queryBuilder.andWhere("assignedOrders.assignId = :assignId", {
-      assignId: options.assignId,
-    });
-  }
+    if (options.dealershipId) {
+      queryBuilder.andWhere("assignedOrders.dealershipId = :dealershipId", {
+        dealershipId: options.dealershipId,
+      });
+    }
 
-  if (options.orderId) {
-    queryBuilder.andWhere("order.orderId = :orderId", {
-      orderId: options.orderId,
-    });
-  }
+    if (options.assignId) {
+      queryBuilder.andWhere("assignedOrders.assignId = :assignId", {
+        assignId: options.assignId,
+      });
+    }
 
-  if (options.page && options.perPage) {
-    queryBuilder
-      .skip((options.page - 1) * options.perPage)
-      .take(options.perPage);
-  }
+    if (options.orderId) {
+      queryBuilder.andWhere("order.orderId = :orderId", {
+        orderId: options.orderId,
+      });
+    }
 
-  return getOne
-    ? await queryBuilder.getOne()
-    : await queryBuilder.getManyAndCount();
+    if (options.page && options.perPage) {
+      queryBuilder
+        .skip((options.page - 1) * options.perPage)
+        .take(options.perPage);
+    }
+
+    return getOne
+      ? await queryBuilder.getOne()
+      : await queryBuilder.getManyAndCount();
+  } catch (error) {
+    throw new Error("Failed to fetch assigned orders: " + error.message);
+  }
 };
 
 // Importing necessary libraries and tools
@@ -152,6 +173,7 @@ export class AssignResolver {
       // Fetch the assigned orders for the user
       const assignedOrder = await fetchAssignedOrders({
         userId,
+        accountType: user.accountType as AccountType,
         assignStatus: [AssignStatus.PENDING, AssignStatus.ASSIGNED],
       });
 
@@ -214,13 +236,14 @@ export class AssignResolver {
     @Arg("type") type: AssignType,
     // The payment amount for the order (required for return orders)
     @Arg("paymentAmount", { nullable: true }) paymentAmount: string,
+    @Arg("paymentIssued", { nullable: true }) paymentIssued: boolean,
     // The context of the request
     @Ctx() ctx: MyContext,
     // The publish function for the ORDER_ASSIGNED subscription
     @PubSub("ORDER_ASSIGNED") publish: any
   ) {
     // If the assignment type is return, a payment amount is required
-    if (type === AssignType.RETURN.valueOf()) {
+    if (paymentIssued && type === AssignType.RETURN.valueOf()) {
       if (!paymentAmount) throw new ApolloError("Payment amount is required");
     }
     try {
@@ -281,9 +304,10 @@ export class AssignResolver {
       // If no dealership ID is provided, throw an error
       if (!dealershipId) throw new ApolloError("Dealership ID is required");
       // Fetch the dealership from the database
-      const dealership = await Dealership.findOne({
-        where: { dealershipId: dealershipId },
-      });
+      const dealership = await getRepository(Dealership)
+        .createQueryBuilder("dealership")
+        .where("dealership.dealershipId = :dealershipId", { dealershipId })
+        .getOne();
       // If the dealership is not found, throw an error
       if (!dealership) throw new ApolloError("Dealership not found");
 
@@ -301,14 +325,13 @@ export class AssignResolver {
           AssignStatus.ACCEPTED,
           AssignStatus.ASSIGNED,
           AssignStatus.COMPLETED,
-          AssignStatus.PENDING,
           AssignStatus.STARTED,
           AssignStatus.CANCELLED,
         ],
       });
 
       // If the order has already been assigned, throw an error
-      if (getAssignedOrders) {
+      if (getAssignedOrders && (getAssignedOrders as any)[1] > 0) {
         throw new ApolloError("Order has already been assigned");
       }
 
@@ -325,7 +348,7 @@ export class AssignResolver {
       });
 
       // If the assignment type is return, create a payment intent
-      if (type === AssignType.RETURN.valueOf()) {
+      if (paymentIssued && type === AssignType.RETURN.valueOf()) {
         const createPayment = await createPaymentIntent(
           Number.parseInt(paymentAmount)
         );
@@ -375,7 +398,7 @@ export class AssignResolver {
       // Publish the assigned order to the ORDER_ASSIGNED subscription
       await publish(assignedOrder);
       // Return the assigned order
-      return assignedOrder;
+      return (assignedOrder as any)[0];
     } catch (error) {
       // If an error occurs, throw an ApolloError with the error message
       throw new ApolloError("Failed to assign order" + " " + error);
@@ -414,7 +437,6 @@ export class AssignResolver {
         assignedOrder.assignStatus !== AssignStatus.ASSIGNED.valueOf() &&
         assignedOrder.assignStatus !== AssignStatus.RETURN_INITIATED.valueOf()
       ) {
-        console.log(assignedOrder.assignStatus, "from accept order");
         throw new ApolloError("Order has already been accepted");
       }
 
@@ -534,6 +556,7 @@ export class AssignResolver {
       // Fetch the assigned orders from the database that are assigned to the user and have a status of ASSIGNED or RETURN_INITIATED
       const assignedOrder = await fetchAssignedOrders({
         userId: user.userId,
+        accountType: user.accountType as AccountType,
         assignStatus: [AssignStatus.ASSIGNED, AssignStatus.RETURN_INITIATED],
       });
 
@@ -541,7 +564,7 @@ export class AssignResolver {
       if (!assignedOrder) throw new ApolloError("Assigned order not found");
 
       // Return the assigned orders
-      return assignedOrder;
+      return (assignedOrder as any)[0];
     } catch (error) {
       // If an error occurs, log the error
       console.error(error);
@@ -585,6 +608,7 @@ export class AssignResolver {
       // Fetch the assigned orders from the database that are assigned to the user and have a status of ACCEPTED, with pagination
       const assignedOrders = await fetchAssignedOrders({
         userId: user.userId,
+        accountType: user.accountType as AccountType,
         assignStatus: [AssignStatus.ACCEPTED],
         page,
         perPage,
@@ -594,7 +618,7 @@ export class AssignResolver {
       if (!assignedOrders) throw new ApolloError("Assigned order not found");
 
       // Return the assigned orders
-      return assignedOrders;
+      return (assignedOrders as any)[0];
     } catch (error) {
       // If an error occurs, log the error
       console.error(error);
@@ -616,15 +640,13 @@ export class AssignResolver {
     // The topic of the subscription is "ORDER_ASSIGNED"
     topics: "ORDER_ASSIGNED",
     // The filter function is used to determine who should receive the subscription data
-    filter: async ({ payload, context }) => {
+    filter: async ({ context }) => {
       // Decode the authorization token to get the username
       const decode = await usernameToken(
         context.connectionParams.Authorization
       );
       // Fetch the user from the database using the decoded username
       const user = await getUser({ username: (<any>decode).username });
-      // Log the payload for debugging purposes
-      console.log(payload);
       // If the user is a driver, return true to send the subscription data to the user
       if (user?.accountType === AccountType.DRIVER.valueOf()) return true;
       // If the user is not a driver, return false to not send the subscription data to the user

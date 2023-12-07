@@ -68,7 +68,6 @@ export async function getUser({
 
     return user;
   } catch (err) {
-    console.error(err);
     throw new Error("Failed to get user");
   }
 }

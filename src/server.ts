@@ -22,6 +22,7 @@ import {
   ConfirmationResolver,
   ServicePackageResolver,
   PaymentResolver,
+  LicenseResolver,
 } from "./core/resolvers/index";
 import dotenv from "dotenv";
 import { ValetResolver } from "./core/resolvers/ValetResolver";
@@ -54,6 +55,7 @@ dotenv.config();
       ServicePackageResolver,
       ValetResolver,
       PaymentResolver,
+      LicenseResolver,
     ],
     validate: false,
     authChecker,

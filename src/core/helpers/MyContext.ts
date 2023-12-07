@@ -8,5 +8,6 @@ export interface MyContext {
   accountType?: any;
   token?: any;
   connectionParams?: any;
+  membership?: string[];
   payload?: any;
 }

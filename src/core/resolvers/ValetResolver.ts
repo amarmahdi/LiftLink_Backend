@@ -22,6 +22,7 @@ import { ValetInput } from "../inputs/ValetInput";
 import { getConnection, getRepository } from "typeorm";
 import { getUser } from "./UserInfo";
 import { verifyAccessToken } from "../helpers/authChecker";
+import { AssignStatus, AssignedOrders } from "../entity/AssignedOrder";
 
 const stateTransitions = {
   [ValetStatus.IN_PROGRESS.valueOf()]: [
@@ -240,7 +241,6 @@ export class ValetResolver {
       if (!customer) throw new Error("User not found");
 
       const valet = await this.createValetFun(inputs, customer, driver);
-      console.log(customer, "customer");
 
       if (valet.order.valetVehicleRequest) {
         await this.updateVehicleCheckFun({
@@ -259,9 +259,17 @@ export class ValetResolver {
         .leftJoinAndSelect("order.dealership", "dealership")
         .where("order.orderId = :orderId", { orderId: inputs.orderId })
         .getOne();
-
+      const assignedOrder = await getRepository(AssignedOrders)
+        .createQueryBuilder("assignedOrder")
+        .leftJoinAndSelect("assignedOrder.order", "order")
+        .leftJoinAndSelect("assignedOrder.driver", "driver")
+        .where("order.orderId = :orderId", { orderId: inputs.orderId })
+        .getOne();
+      if (!assignedOrder) throw new Error("Assigned order not found");
+      assignedOrder.assignStatus = AssignStatus.PENDING;
       valet.driver = driver;
       await valet.save();
+      await assignedOrder.save();
 
       if (!order) throw new Error("Order not found");
       order.orderStatus = OrderStatus.IN_PROGRESS;
@@ -323,6 +331,7 @@ export class ValetResolver {
       const valets = await getRepository(Valet)
         .createQueryBuilder("valet")
         .leftJoinAndSelect("valet.customer", "customer")
+        .leftJoinAndSelect("customer.profilePicture", "profilePicture")
         .leftJoinAndSelect("valet.dealership", "dealership")
         .leftJoinAndSelect("valet.order", "order")
         .leftJoinAndSelect("order.vehicle", "vehicle")
@@ -335,7 +344,6 @@ export class ValetResolver {
         })
         .orderBy("valet.createdAt", "DESC")
         .getMany();
-      console.log(valets, "###############");
       return valets;
     } catch (error) {
       console.error(error);
@@ -396,9 +404,6 @@ export class ValetResolver {
         });
         valet.customerPickUpTime = date;
       }
-      valet.valetStatus = state.toUpperCase() as ValetStatus;
-      valet.driver = driver;
-      valet.updatedAt = date;
       if (state === ValetStatus.DEALERSHIP_TO_CUSTOMER_COMPLETED.valueOf()) {
         valet.valetDropOffTime = date;
       }
@@ -416,6 +421,9 @@ export class ValetResolver {
         driver.isOnService = false;
         await driver.save();
       }
+      valet.valetStatus = state.toUpperCase() as ValetStatus;
+      valet.driver = driver;
+      valet.updatedAt = date;
       await valet.save();
       return valet;
     } catch (err: any) {
@@ -464,7 +472,6 @@ export class ValetResolver {
     isStarted = true
   ) {
     state = state.toUpperCase() as ValetStatus;
-    console.log("stateTransitions[valet.valetStatus].includes(state)");
     if (valet.valetStatus.toUpperCase() === state) {
       throw new Error(`Valet already in ${state} state`);
     }
@@ -500,7 +507,6 @@ export class ValetResolver {
         .where("valet.valetId = :valetId", { valetId })
         .getOne();
 
-      console.log(valet?.customer.userId, "valet");
       publish({
         id: valet?.customer.userId,
         latitude,

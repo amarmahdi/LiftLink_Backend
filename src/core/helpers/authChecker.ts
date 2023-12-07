@@ -22,7 +22,7 @@ export const verifyRefreshToken = (token: string) => {
   if (Date.now() >= exp * 1000) {
     throw new Error("Token has expired");
   }
-  if (!payload) throw "invalid token"
+  if (!payload) throw "invalid token";
   return payload;
 };
 
@@ -44,7 +44,6 @@ export const authChecker: AuthChecker<MyContext> = async ({ context }) => {
     if (!user) {
       throw new Error("User not found");
     }
-
     context.payload = payload as any;
     context.user = user as any;
     context.token = accessToken as any;

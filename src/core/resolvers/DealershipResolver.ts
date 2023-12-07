@@ -133,7 +133,6 @@ export class DealershipResolver {
         where: { dealershipName },
       });
       if (!dealership) throw new Error("Dealership not found");
-      console.log(user.userId);
       dealership.dealershipName = dealershipName;
       dealership.dealershipAddress = dealershipAddress;
       dealership.dealershipCity = dealershipCity;
@@ -161,9 +160,15 @@ export class DealershipResolver {
       const duser = await getUser({ username: dusername });
       if (!duser) throw new Error("User not found");
       if (!duser.isDealership) throw new Error("User is not a dealership");
-      const dealership = await Dealership.findOne({
-        where: { dealershipName },
-      });
+      // const dealership = await Dealership.findOne({
+      //   where: { dealershipName },
+      // });
+      const dealership = await getRepository(Dealership)
+        .createQueryBuilder("dealership")
+        .where("dealership.dealershipName = :dealershipName", {
+          dealershipName,
+        })
+        .getOne();
       if (!dealership) throw new Error("Dealership not found");
       const user = await getUser({ userId });
       if (!user) throw new Error("User not found");
@@ -182,6 +187,8 @@ export class DealershipResolver {
       await UserDealershipConfirmation.create({
         user,
         dealership,
+        fromDealershipId: dealership.dealershipId,
+        toUserId: user.userId,
       }).save();
       await publish({
         payload: { userId: user.userId, dealershipId: dealership.dealershipId },
@@ -196,7 +203,6 @@ export class DealershipResolver {
   @Subscription(() => UserDealershipConfirmation, {
     topics: "NOTIFY_DRIVER",
     filter: async ({ payload, context }) => {
-      console.log(payload.userId, "driver");
       const driver = await getUser({
         userId: payload.payload.userId,
       });
@@ -204,7 +210,6 @@ export class DealershipResolver {
       const decoded = await usernameToken(
         context.connectionParams.Authorization
       );
-      console.log(decoded, "username");
       if (driver.username !== (<any>decoded).username) return false;
       return true;
     },
@@ -480,8 +485,43 @@ export class DealershipResolver {
       const searchResults = await searchDealerships(searchTerm);
       return searchResults;
     } catch (error: any) {
-      console.error(error);
       throw new Error("Failed to search dealerships " + error);
+    }
+  }
+
+  @Mutation(() => Boolean)
+  @Authorized()
+  async requestMembership(
+    @Arg("dealershipName") dealershipName: string,
+    @Ctx() ctx: MyContext
+  ) {
+    try {
+      const username = (<any>ctx.payload).username;
+      const user = await getUser({ username });
+      if (!user) throw new Error("User not found");
+      const dealership = await getRepository(Dealership)
+        .createQueryBuilder("dealership")
+        .where("dealership.dealershipName = :dealershipName", {
+          dealershipName,
+        })
+        .getOne();
+      if (!dealership) throw new Error("Dealership not found");
+      const userInDealership = await isIncluded(
+        user.dealerships,
+        "dealershipName",
+        dealershipName
+      );
+      if (userInDealership) throw new Error("User is already in dealership");
+      await UserDealershipConfirmation.create({
+        user,
+        dealership,
+        fromUserId: user.userId,
+        toDealershipId: dealership.dealershipId,
+      }).save();
+      return true;
+    } catch (error) {
+      console.error(error);
+      throw new Error("Failed to request membership");
     }
   }
 }

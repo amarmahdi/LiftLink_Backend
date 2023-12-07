@@ -49,7 +49,6 @@ export class AssignedOrders extends BaseEntity {
 
   @Field(() => [User], { nullable: true })
   @ManyToMany(() => User, (user) => user.userId, {
-    eager: true,
     nullable: true,
     createForeignKeyConstraints: false,
   })
@@ -72,6 +71,10 @@ export class AssignedOrders extends BaseEntity {
   @Field({ nullable: true })
   @Column({ nullable: true })
   customerId!: string;
+
+  @Field()
+  @Column({ default: false })
+  paymentIssued: boolean;
 
   @Field()
   @Column({ nullable: true })

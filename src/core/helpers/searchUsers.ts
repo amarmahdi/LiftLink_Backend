@@ -46,13 +46,12 @@ export const searchUsers = async (
 };
 
 export const searchDealerships = async (
-  searchTerm: string
+  searchTerm: string,
 ): Promise<Dealership[]> => {
   let query = Dealership.createQueryBuilder("dealership").leftJoinAndSelect(
     "dealership.servicePackages",
     "servicePackage"
   );
-
   if (searchTerm) {
     searchTerm = searchTerm.toLowerCase();
     query = query.andWhere(

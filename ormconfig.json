@@ -15,7 +15,7 @@
     "src/core/entity/*.ts",
     "./dist/core/entity/*.js"
   ],
-  "synchronize": true,
+  "synchronize": false,
   "cache": true,
   "autoLoadEntities": true
 }
