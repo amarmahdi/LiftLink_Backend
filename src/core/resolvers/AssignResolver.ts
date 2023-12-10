@@ -622,9 +622,9 @@ export class AssignResolver {
   @Query(() => [AssignedOrders])
   async getConfirmedOrders(
     // The page number for pagination
-    @Arg("page") page: number,
-    // The number of items per page for pagination
-    @Arg("perPage") perPage: number,
+    // @Arg("page") page: number,
+    // // The number of items per page for pagination
+    // @Arg("perPage") perPage: number,
     // The context of the request
     @Ctx() ctx: MyContext
   ) {
@@ -646,8 +646,8 @@ export class AssignResolver {
         userId: user.userId,
         accountType: user.accountType as AccountType,
         assignStatus: [AssignStatus.ACCEPTED, AssignStatus.RETURN_ACCEPTED],
-        page,
-        perPage,
+        // page,
+        // perPage,
       });
 
       // If no assigned orders are found, throw an ApolloError with a message of "Assigned order not found"
