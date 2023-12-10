@@ -50,14 +50,14 @@ export const fetchAssignedOrders = async (
     if (options.userId && !options.accountType) {
       throw new Error("Account type is required");
     }
-    
+
     const queryBuilder = getRepository(AssignedOrders)
       .createQueryBuilder("assignedOrders")
       .leftJoinAndSelect("assignedOrders.order", "order")
       .leftJoinAndSelect("assignedOrders.drivers", "drivers")
       .leftJoinAndSelect("assignedOrders.dealership", "dealership")
       .leftJoinAndSelect("assignedOrders.valetVehicle", "valetVehicle");
-    
+
     if (
       options.userId &&
       options.accountType === AccountType.DRIVER.valueOf()
@@ -174,7 +174,11 @@ export class AssignResolver {
       const assignedOrder = await fetchAssignedOrders({
         userId,
         accountType: user.accountType as AccountType,
-        assignStatus: [AssignStatus.PENDING, AssignStatus.ASSIGNED],
+        assignStatus: [
+          AssignStatus.PENDING,
+          AssignStatus.ASSIGNED,
+          AssignStatus.RETURN_ASSIGNED,
+        ],
       });
 
       // If no assigned orders are found, throw an ApolloError
@@ -242,6 +246,7 @@ export class AssignResolver {
     // The publish function for the ORDER_ASSIGNED subscription
     @PubSub("ORDER_ASSIGNED") publish: any
   ) {
+    type = type.toUpperCase() as AssignType;
     // If the assignment type is return, a payment amount is required
     if (paymentIssued && type === AssignType.RETURN.valueOf()) {
       if (!paymentAmount) throw new ApolloError("Payment amount is required");
@@ -254,9 +259,18 @@ export class AssignResolver {
         .getOne();
       // If the order is not found, throw an error
       if (!orderData) throw new ApolloError("Order not found");
-
+      if (
+        orderData.orderStatus === OrderStatus.INITIATED.valueOf() &&
+        type === AssignType.RETURN.valueOf()
+      ) {
+        throw new ApolloError("Order not ready for return");
+      }
       // If the order has already been accepted, throw an error
-      if (orderData.orderStatus === OrderStatus.ACCEPTED.valueOf()) {
+      if (
+        orderData.orderStatus ===
+        (OrderStatus.ACCEPTED.valueOf() ||
+          OrderStatus.RETURN_ACCEPTED.valueOf())
+      ) {
         throw new ApolloError("Order has already been accepted");
       }
 
@@ -283,8 +297,8 @@ export class AssignResolver {
       // fetch the valet vehicle from the database
       let valetVehicle = null;
       if (
-        orderData.valetVehicleRequest &&
-        type !== AssignType.RETURN.valueOf()
+        type !== AssignType.RETURN.valueOf() &&
+        orderData.valetVehicleRequest
       ) {
         if (!valetVehicleId)
           throw new ApolloError("Valet vehicle is requested");
@@ -327,6 +341,10 @@ export class AssignResolver {
           AssignStatus.COMPLETED,
           AssignStatus.STARTED,
           AssignStatus.CANCELLED,
+          AssignStatus.RETURN_ACCEPTED,
+          AssignStatus.RETURN_ASSIGNED,
+          AssignStatus.RETURN_STARTED,
+          AssignStatus.RETURN_CANCELLED,
         ],
       });
 
@@ -341,47 +359,59 @@ export class AssignResolver {
         assignedById: assignedByData.userId,
         drivers: driverData,
         customerId: customerData.userId,
-        assignStatus: AssignStatus.ASSIGNED,
         assignDate: new Date(),
-        valetVehicle: valetVehicle as any,
         dealership: dealership as any,
       });
 
-      // If the assignment type is return, create a payment intent
-      if (paymentIssued && type === AssignType.RETURN.valueOf()) {
-        const createPayment = await createPaymentIntent(
-          Number.parseInt(paymentAmount)
+      if (type === AssignType.RETURN.valueOf()) {
+        const getAssignedOrders = await fetchAssignedOrders(
+          {
+            orderId: orderData.orderId,
+          },
+          true
         );
-        // If the payment intent is not created, throw an error
-        if (!createPayment) throw new ApolloError("Payment not found");
+        assignedOrder.valetVehicle =
+          (getAssignedOrders as any).valetVehicle || null;
+      } else {
+        assignedOrder.valetVehicle = valetVehicle as any;
+      }
 
-        // Create a new payment intent
-        const payment = await PaymentIntent.create({
-          amount: createPayment.amount,
-          currency: createPayment.currency,
-          customer: customerData,
-          order: [orderData],
-          paymentIntentClientSecret: createPayment.client_secret!,
-          paymentIntentId: createPayment.id,
-          paymentMethodId: createPayment.payment_method! as string,
-          paymentStatus: createPayment.status,
-          paymentIntentCreated: new Date(),
-        }).save();
+      // If the assignment type is return, create a payment intent
+      if (type === AssignType.RETURN.valueOf()) {
+        if (paymentIssued) {
+          const createPayment = await createPaymentIntent(
+            Number.parseInt(paymentAmount)
+          );
+          // If the payment intent is not created, throw an error
+          if (!createPayment) throw new ApolloError("Payment not found");
 
-        // If the payment intent is not saved, throw an error
-        if (!payment) throw new ApolloError("Payment not created");
+          // Create a new payment intent
+          const payment = await PaymentIntent.create({
+            amount: createPayment.amount,
+            currency: createPayment.currency,
+            customer: customerData,
+            order: [orderData],
+            paymentIntentClientSecret: createPayment.client_secret!,
+            paymentIntentId: createPayment.id,
+            paymentMethodId: createPayment.payment_method! as string,
+            paymentStatus: createPayment.status,
+            paymentIntentCreated: new Date(),
+          }).save();
 
+          // If the payment intent is not saved, throw an error
+          if (!payment) throw new ApolloError("Payment not created");
+          assignedOrder.order[0].payment = payment;
+        }
         // Update the assigned order and order status
-        assignedOrder.assignStatus = AssignStatus.RETURN_INITIATED;
-        assignedOrder.order[0].payment = payment;
-        assignedOrder.order[0].orderStatus = OrderStatus.RETURN_INITIATED;
+        assignedOrder.assignStatus = AssignStatus.RETURN_ASSIGNED;
+        assignedOrder.order[0].orderStatus = OrderStatus.RETURN_ASSIGNED;
         await assignedOrder.save();
         await assignedOrder.order[0].save();
       } else {
         // Set the status of the assigned order to ASSIGNED
         assignedOrder.assignStatus = AssignStatus.ASSIGNED;
         // Set the status of the order to PENDING
-        assignedOrder.order[0].orderStatus = OrderStatus.PENDING;
+        assignedOrder.order[0].orderStatus = OrderStatus.ASSIGNED;
         // Save the assigned order to the database
         await assignedOrder.save();
         // Save the order to the database
@@ -398,7 +428,7 @@ export class AssignResolver {
       // Publish the assigned order to the ORDER_ASSIGNED subscription
       await publish(assignedOrder);
       // Return the assigned order
-      return (assignedOrder as any)[0];
+      return assignedOrder;
     } catch (error) {
       // If an error occurs, throw an ApolloError with the error message
       throw new ApolloError("Failed to assign order" + " " + error);
@@ -435,7 +465,7 @@ export class AssignResolver {
       // If the assigned order has already been accepted, throw an error
       if (
         assignedOrder.assignStatus !== AssignStatus.ASSIGNED.valueOf() &&
-        assignedOrder.assignStatus !== AssignStatus.RETURN_INITIATED.valueOf()
+        assignedOrder.assignStatus !== AssignStatus.RETURN_ASSIGNED.valueOf()
       ) {
         throw new ApolloError("Order has already been accepted");
       }
@@ -454,7 +484,16 @@ export class AssignResolver {
       if (!order) throw new ApolloError("Order not found");
 
       // Set the order status to ACCEPTED, set the driver to the user, fetch the customer from the database, set the customer to the fetched customer, and save the order
-      order.orderStatus = OrderStatus.ACCEPTED;
+      if (assignedOrder.assignStatus === AssignStatus.ASSIGNED.valueOf()) {
+        order.orderStatus = OrderStatus.ACCEPTED;
+        assignedOrder.assignStatus = AssignStatus.ACCEPTED;
+      }
+      if (
+        assignedOrder.assignStatus === AssignStatus.RETURN_ASSIGNED.valueOf()
+      ) {
+        order.orderStatus = OrderStatus.RETURN_ACCEPTED;
+        assignedOrder.assignStatus = AssignStatus.RETURN_ACCEPTED;
+      }
       order.driver = user;
       const getCustomer = await getUser({
         userId: assignedOrder.customerId,
@@ -464,7 +503,6 @@ export class AssignResolver {
       await order.save();
 
       // Set the assigned order status to ACCEPTED, set the accept date to the current date, set the accepted by ID to the user's ID, set the drivers to the user, and save the assigned order
-      assignedOrder.assignStatus = AssignStatus.ACCEPTED;
       assignedOrder.acceptDate = new Date();
       assignedOrder.acceptedById = user.userId;
       assignedOrder.drivers = [user];
@@ -474,10 +512,8 @@ export class AssignResolver {
       return assignedOrder;
     } catch (error) {
       // If an error occurs, log the error and throw an ApolloError with the error message
-      console.error("Failed to accept order:");
-      throw new ApolloError("Failed to accept order", "ACCEPT_ORDER_ERROR", {
-        originalError: error,
-      });
+      console.error("Failed to accept order:" + " " + error);
+      throw new Error(error);
     }
   }
   // This mutation is used to reject an order by a driver
@@ -557,7 +593,7 @@ export class AssignResolver {
       const assignedOrder = await fetchAssignedOrders({
         userId: user.userId,
         accountType: user.accountType as AccountType,
-        assignStatus: [AssignStatus.ASSIGNED, AssignStatus.RETURN_INITIATED],
+        assignStatus: [AssignStatus.ASSIGNED, AssignStatus.RETURN_ASSIGNED],
       });
 
       // If no assigned orders are found, throw an error
@@ -609,7 +645,7 @@ export class AssignResolver {
       const assignedOrders = await fetchAssignedOrders({
         userId: user.userId,
         accountType: user.accountType as AccountType,
-        assignStatus: [AssignStatus.ACCEPTED],
+        assignStatus: [AssignStatus.ACCEPTED, AssignStatus.RETURN_ACCEPTED],
         page,
         perPage,
       });

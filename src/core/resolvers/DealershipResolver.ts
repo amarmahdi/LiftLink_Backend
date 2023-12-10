@@ -15,7 +15,10 @@ import { MyContext } from "../helpers/MyContext";
 import { User } from "../entity/User";
 import { DealershipInput } from "../inputs/DealershipInput";
 import { AccountType } from "../types/AccountTypes";
-import { UserDealershipConfirmation } from "../entity/Confirmation";
+import {
+  ConfirmationStatus,
+  UserDealershipConfirmation,
+} from "../entity/Confirmation";
 import { searchDealerships } from "../helpers/searchUsers";
 import { AssignStatus, AssignedOrders } from "../entity/AssignedOrder";
 import { getRepository } from "typeorm";
@@ -512,6 +515,31 @@ export class DealershipResolver {
         dealershipName
       );
       if (userInDealership) throw new Error("User is already in dealership");
+      const confirmation = await getRepository(UserDealershipConfirmation)
+        .createQueryBuilder("userDealershipConfirmation")
+        .leftJoinAndSelect("userDealershipConfirmation.user", "user")
+        .leftJoinAndSelect(
+          "userDealershipConfirmation.dealership",
+          "dealership"
+        )
+        .where("user.userId = :userId", { userId: user.userId })
+        .andWhere("dealership.dealershipId = :dealershipId", {
+          dealershipId: dealership.dealershipId,
+        })
+        .andWhere("userDealershipConfirmation.fromUserId = :fromUserId", {
+          fromUserId: user.userId,
+        })
+        .andWhere(
+          "userDealershipConfirmation.toDealershipId = :toDealershipId",
+          {
+            toDealershipId: dealership.dealershipId,
+          }
+        )
+        .andWhere("userDealershipConfirmation.confirmationStatus != :status", {
+          status: ConfirmationStatus.REJECTED.valueOf(),
+        })
+        .getOne();
+      if (confirmation) throw new Error("Request already sent");
       await UserDealershipConfirmation.create({
         user,
         dealership,
@@ -520,8 +548,7 @@ export class DealershipResolver {
       }).save();
       return true;
     } catch (error) {
-      console.error(error);
-      throw new Error("Failed to request membership");
+      throw new Error(error);
     }
   }
 }

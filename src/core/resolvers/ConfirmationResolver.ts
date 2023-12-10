@@ -50,7 +50,6 @@ export class ConfirmationResolver {
         user.accountType === AccountType.ADMIN.valueOf() ||
         user.accountType === AccountType.MANAGER.valueOf()
       ) {
-        console.log(dealershipId);
         confirmation.andWhere("confirmation.toDealershipId = :dealershipId", {
           dealershipId,
         });
@@ -82,7 +81,6 @@ export class ConfirmationResolver {
         })
         .andWhere("confirmation.fromUserId = :userId", { userId: user.userId })
         .getMany();
-      console.log(getConfirmation);
       if (!getConfirmation) throw new Error("Confirmation not found");
       return getConfirmation;
     } catch (err) {

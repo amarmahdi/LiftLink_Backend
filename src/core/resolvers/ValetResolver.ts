@@ -23,6 +23,7 @@ import { getConnection, getRepository } from "typeorm";
 import { getUser } from "./UserInfo";
 import { verifyAccessToken } from "../helpers/authChecker";
 import { AssignStatus, AssignedOrders } from "../entity/AssignedOrder";
+import { CarInfo } from "../entity/CarInfo";
 
 const stateTransitions = {
   [ValetStatus.IN_PROGRESS.valueOf()]: [
@@ -49,10 +50,14 @@ const stateTransitions = {
     ValetStatus.CUSTOMER_TO_DEALERSHIP_STARTED.valueOf(),
     ValetStatus.CANCELLED.valueOf(),
   ],
-  // [ValetStatus.CUSTOMER_RETURN_STARTED.valueOf()]: [
-  //   ValetStatus.CUSTOMER_RETURN_COMPLETED.valueOf(),
-  //   ValetStatus.CANCELLED.valueOf(),
-  // ],
+  [ValetStatus.CUSTOMER_RETURN_STARTED.valueOf()]: [
+    ValetStatus.CUSTOMER_TO_DEALERSHIP_COMPLETED.valueOf(),
+    ValetStatus.CANCELLED.valueOf(),
+  ],
+  [ValetStatus.CUSTOMER_RETURN_COMPLETED.valueOf()]: [
+    ValetStatus.CUSTOMER_RETURN_STARTED.valueOf(),
+    ValetStatus.CANCELLED.valueOf(),
+  ],
 };
 
 @ObjectType()
@@ -86,6 +91,7 @@ export class ValetResolver {
     const existsInCustomer = await getRepository(Valet)
       .createQueryBuilder("valet")
       .leftJoinAndSelect("valet.customer", "customer")
+      .leftJoinAndSelect("customer.profilePicture", "profilePicture")
       .leftJoinAndSelect("valet.dealership", "dealership")
       .leftJoinAndSelect("valet.order", "order")
       .leftJoinAndSelect("order.vehicle", "vehicle")
@@ -98,6 +104,7 @@ export class ValetResolver {
           ValetStatus.COMPLETED,
           ValetStatus.CANCELLED,
           ValetStatus.IN_PROGRESS,
+          ValetStatus.RETURN_IN_PROGRESS,
         ],
       })
       .getMany();
@@ -144,6 +151,7 @@ export class ValetResolver {
       getRepository(Valet)
         .createQueryBuilder("valet")
         .leftJoinAndSelect("valet.customer", "customer")
+        .leftJoinAndSelect("customer.profilePicture", "profilePicture")
         .leftJoinAndSelect("valet.dealership", "dealership")
         .leftJoinAndSelect("valet.order", "order")
         .leftJoinAndSelect("order.vehicle", "vehicle")
@@ -213,6 +221,9 @@ export class ValetResolver {
       //   createValet.valetVehicleChecks = createCheck!;
       // }
       await createValet.save();
+      order.orderStatus = OrderStatus.IN_PROGRESS;
+      order.updatedDate = new Date();
+      await order.save();
       if (!createValet) throw new Error("Failed to create valet");
       driver.isOnService = true;
       await driver.save();
@@ -262,7 +273,6 @@ export class ValetResolver {
       const assignedOrder = await getRepository(AssignedOrders)
         .createQueryBuilder("assignedOrder")
         .leftJoinAndSelect("assignedOrder.order", "order")
-        .leftJoinAndSelect("assignedOrder.driver", "driver")
         .where("order.orderId = :orderId", { orderId: inputs.orderId })
         .getOne();
       if (!assignedOrder) throw new Error("Assigned order not found");
@@ -278,7 +288,8 @@ export class ValetResolver {
 
       return valet;
     } catch (err: any) {
-      throw new Error(`Failed to create valet: ${err.message}`);
+      console.error(err);
+      throw new Error("Failed to create valet");
     }
   }
 
@@ -286,10 +297,11 @@ export class ValetResolver {
     const valetExists = await getRepository(Valet)
       .createQueryBuilder("valet")
       .leftJoinAndSelect("valet.customer", "customer")
+      .leftJoinAndSelect("customer.profilePicture", "profilePicture")
       .leftJoinAndSelect("valet.dealership", "dealership")
+      .leftJoinAndSelect("valet.driver", "driver")
       .leftJoinAndSelect("valet.order", "order")
       .leftJoinAndSelect("order.vehicle", "vehicle")
-      .leftJoinAndSelect("valet.driver", "driver")
       .leftJoinAndSelect("valet.customerVehiclChecks", "customerVehiclChecks")
       .leftJoinAndSelect("valet.valetVehicleChecks", "valetVehicleChecks")
       .where("order.orderId = :orderId", { orderId })
@@ -327,6 +339,8 @@ export class ValetResolver {
         ValetStatus.DEALERSHIP_TO_CUSTOMER_STARTED.valueOf(),
         ValetStatus.VALET_VEHICLE_DROP_OFF.valueOf(),
         ValetStatus.VALET_VEHICLE_PICK_UP.valueOf(),
+        ValetStatus.CUSTOMER_VEHICLE_PICK_UP.valueOf(),
+        ValetStatus.CUSTOMER_RETURN_STARTED.valueOf(),
       ];
       const valets = await getRepository(Valet)
         .createQueryBuilder("valet")
@@ -347,7 +361,7 @@ export class ValetResolver {
       return valets;
     } catch (error) {
       console.error(error);
-      throw new Error("Failed to get started driver valets " + error);
+      throw new Error("Failed to get started driver valets");
     }
   }
 
@@ -358,7 +372,7 @@ export class ValetResolver {
       const valet = await this.valetExistsFun(orderId);
       return valet;
     } catch (err: any) {
-      throw new Error(`Failed to get valet: ${err.message}`);
+      throw new Error("Failed to get valet");
     }
   }
 
@@ -381,6 +395,7 @@ export class ValetResolver {
       const valet = await getRepository(Valet)
         .createQueryBuilder("valet")
         .leftJoinAndSelect("valet.customer", "customer")
+        .leftJoinAndSelect("customer.profilePicture", "profilePicture")
         .leftJoinAndSelect("valet.dealership", "dealership")
         .leftJoinAndSelect("valet.order", "order")
         .leftJoinAndSelect("order.driver", "driver")
@@ -421,6 +436,32 @@ export class ValetResolver {
         driver.isOnService = false;
         await driver.save();
       }
+      if (state === ValetStatus.CUSTOMER_RETURN_STARTED.valueOf()) {
+        valet.returnStartTime = date;
+      }
+      if (state === ValetStatus.CUSTOMER_RETURN_COMPLETED.valueOf()) {
+        valet.returnEndTime = date;
+        const assignedOrder = await getRepository(AssignedOrders)
+          .createQueryBuilder("assignedOrder")
+          .leftJoinAndSelect("assignedOrder.order", "order")
+          .leftJoinAndSelect("assignedOrder.valetVehicle", "vehicle")
+          .where("order.orderId = :orderId", { orderId: valet.order.orderId })
+          .getOne();
+        if (!assignedOrder) throw new Error("Assigned order not found");
+        const getValetVehicle = await getRepository(CarInfo)
+          .createQueryBuilder("vehicle")
+          .where("vehicle.carId = :carId", {
+            carId: assignedOrder.valetVehicle.carId,
+          })
+          .getOne();
+        if (!getValetVehicle) throw new Error("Vehicle not found");
+        getValetVehicle.available = true;
+        assignedOrder.assignStatus = AssignStatus.COMPLETED;
+        valet.order.orderStatus = OrderStatus.COMPLETED;
+        await getValetVehicle.save();
+        await assignedOrder.save();
+        await valet.order.save();
+      }
       valet.valetStatus = state.toUpperCase() as ValetStatus;
       valet.driver = driver;
       valet.updatedAt = date;
@@ -428,7 +469,7 @@ export class ValetResolver {
       return valet;
     } catch (err: any) {
       console.error(err);
-      throw new Error(`Failed to update valet: ${err.message}`);
+      throw new Error("Failed to update valet");
     }
   }
 
@@ -462,7 +503,7 @@ export class ValetResolver {
       return true;
     } catch (err: any) {
       console.error(err);
-      throw new Error(`Failed to update vehicle check: ${err.message}`);
+      throw new Error("Failed to update vehicle check");
     }
   }
 
@@ -524,7 +565,7 @@ export class ValetResolver {
       };
     } catch (err: any) {
       console.error(err);
-      throw new Error(`Failed to get driver location: ${err.message}`);
+      throw new Error("Failed to get driver location");
     }
   }
 

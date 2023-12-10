@@ -15,6 +15,7 @@ import { Order } from "./Order";
 
 export enum ValetStatus {
   IN_PROGRESS = "IN_PROGRESS",
+  RETURN_IN_PROGRESS = "RETURN_IN_PROGRESS",
   NOT_STARTED = "NOT_STARTED",
   CUSTOMER_VEHICLE_PICK_UP = "CUSTOMER_VEHICLE_PICK_UP",
   CUSTOMER_VEHICLE_DROP_OFF = "CUSTOMER_VEHICLE_DROP_OFF",
@@ -26,6 +27,7 @@ export enum ValetStatus {
   CUSTOMER_TO_DEALERSHIP_COMPLETED = "CUSTOMER_TO_DEALERSHIP_COMPLETED",
   CUSTOMER_RETURN_STARTED = "CUSTOMER_RETURN_STARTED",
   CUSTOMER_RETURN_COMPLETED = "CUSTOMER_RETURN_COMPLETED",
+  RETURN_DEALERSHIP_TO_CUSTOMER_STARTED = "RETURN_DEALERSHIP_TO_CUSTOMER_STARTED",
   COMPLETED = "COMPLETED",
   CANCELLED = "CANCELLED",
 }
@@ -75,30 +77,38 @@ export class Valet extends BaseEntity {
   valetStatus!: ValetStatus;
 
   @Field({ nullable: true })
-  @Column({ nullable: true})
+  @Column({ nullable: true })
   valetPickUpTime!: Date;
 
   @Field({ nullable: true })
-  @Column({ nullable: true})
+  @Column({ nullable: true })
   valetDropOffTime!: Date;
 
   @Field({ nullable: true })
-  @Column({ nullable: true})
+  @Column({ nullable: true })
   customerPickUpTime!: Date;
 
   @Field({ nullable: true })
-  @Column({ nullable: true})
+  @Column({ nullable: true })
   customerDropOffTime!: Date;
 
   @Field({ nullable: true })
-  @Column({ nullable: true})
+  @Column({ nullable: true })
+  returnStartTime!: Date;
+
+  @Field({ nullable: true })
+  @Column({ nullable: true })
+  returnEndTime!: Date;
+
+  @Field({ nullable: true })
+  @Column({ nullable: true })
   comments!: string;
 
   @Field({ nullable: true })
-  @Column({ nullable: true})
+  @Column({ nullable: true })
   createdAt!: Date;
 
   @Field({ nullable: true })
-  @Column({ nullable: true})
+  @Column({ nullable: true })
   updatedAt!: Date;
 }

@@ -30,7 +30,6 @@ export async function getLicense({
     const license = await licenseData.getOne();
     return license;
   } catch (err) {
-    console.log(err);
     return err;
   }
 }

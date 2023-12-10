@@ -128,6 +128,12 @@ export class OrderResolver {
         .leftJoinAndSelect("order.vehicle", "vehicle")
         .where("customer.userId = :userId", { userId: customerObj.userId })
         .andWhere("vehicle.carId = :vehicleId", { vehicleId })
+        .andWhere("order.orderStatus IN (:...orderStatus)", {
+          orderStatus: [
+            OrderStatus.CANCELLED,
+            OrderStatus.COMPLETED,
+          ],
+        })
         .getOne();
 
       if (

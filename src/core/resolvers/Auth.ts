@@ -172,7 +172,6 @@ export class UserResolver {
     @Arg("password") password: string,
     @Ctx() ctx: MyContext
   ) {
-    console.log(new Date())
     if (username) username = username.toLowerCase();
     if (email) email = email.toLowerCase();
     let isCombinedUsername = false
@@ -299,8 +298,6 @@ export class UserResolver {
     try {
       const user = await getUser({ userId: ctx.payload!.userId });
       if (!user) throw new Error("User not found");
-
-      console.log("oldPassword: ", oldPassword);
 
       const valid = await bcrypt.compare(oldPassword, user.password);
       if (!valid) throw new Error("Please enter the correct old password");
