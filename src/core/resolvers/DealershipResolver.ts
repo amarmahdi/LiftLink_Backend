@@ -502,7 +502,7 @@ export class DealershipResolver {
           toUserId: user.userId,
         }).getMany();
       const dealershipFromConfirmation = getConfirmation.map((id) =>
-        id.toDealershipId.toString() || id.fromDealershipId.toString()
+        id.toDealershipId || id.fromDealershipId
       );
       const searchResults = await searchDealerships(
         searchTerm,
