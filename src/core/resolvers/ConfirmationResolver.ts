@@ -42,7 +42,7 @@ export class ConfirmationResolver {
           confirmationStatus: ConfirmationStatus.PENDING,
         });
       if (user.accountType === AccountType.DRIVER.valueOf()) {
-        confirmation.andWhere("confirmation.toUserId != :userId", {
+        confirmation.andWhere("confirmation.toUserId = :userId", {
           userId: user.userId,
         });
       }
@@ -93,32 +93,32 @@ export class ConfirmationResolver {
   @Mutation(() => UserDealershipConfirmation)
   async acceptUserDealership(
     @Arg("confirmationId") confirmationId: string,
+    @Arg("dealershipId", { nullable: true }) dealershipId: string,
     @Ctx() ctx: MyContext
   ) {
     try {
       const username = (<any>ctx.payload).username;
       const user = await getUser({ username });
+      console.log(user);
       if (!user) throw new Error("User not found");
       if (
-        user.accountType !== AccountType.MANAGER.valueOf() &&
-        user.accountType !== AccountType.DRIVER.valueOf() &&
-        user.accountType !== AccountType.ADMIN.valueOf()
+        dealershipId &&
+        user.accountType !== AccountType.ADMIN.valueOf() &&
+        user.accountType !== AccountType.MANAGER.valueOf()
       ) {
-        throw new Error("User is not a manager, driver or dealership");
+        throw new Error(
+          "Only admins or managers can accept confirmations for other dealerships"
+        );
       }
-      // if (user.isDealership)
-      //   throw new Error(
-      //     "This user is a dealership, not a driver or manager. Please contact the admin to change this user's account type"
-      //   );
-      // const getConfirmation = await UserDealershipConfirmation.findOne({
-      //   where: {
-      //     confirmationId,
-      //     confirmationStatus: ConfirmationStatus.PENDING,
-      //   },
-      // });
+      if (user.accountType === AccountType.ADMIN.valueOf() && !dealershipId) {
+        throw new Error("Admin must provide a dealership ID");
+      }
+      if (user.accountType === AccountType.MANAGER.valueOf() && !dealershipId) {
+        throw new Error("Manager must provide a dealership ID");
+      }
+
       const getConfirmation = await getRepository(UserDealershipConfirmation)
         .createQueryBuilder("confirmation")
-        .leftJoinAndSelect("confirmation.user", "user")
         .leftJoinAndSelect("confirmation.dealership", "dealership")
         .where("confirmation.confirmationStatus = :confirmationStatus", {
           confirmationStatus: ConfirmationStatus.PENDING,
@@ -128,43 +128,32 @@ export class ConfirmationResolver {
         })
         .getOne();
       if (!getConfirmation) throw new Error("Confirmation not found");
-      // const dealership = await Dealership.findOne({
-      //   where: {
-      //     dealershipId: getConfirmation.dealership.dealershipId,
-      //   },
-      // });
+      
       const dealership = await getRepository(Dealership)
         .createQueryBuilder("dealership")
-        .leftJoinAndSelect("dealership.user", "user")
         .where("dealership.dealershipId = :dealershipId", {
-          dealershipId: getConfirmation.dealership.dealershipId,
+          dealershipId: dealershipId || getConfirmation.dealership.dealershipId,
         })
         .getOne();
       if (!dealership) throw new Error("Dealership not found");
-      if (user.accountType === AccountType.DRIVER.valueOf()) {
+
+      if (user.accountType === AccountType.DRIVER.valueOf() || user.accountType === AccountType.MANAGER.valueOf()) {
         user.dealerships = [...user.dealerships, dealership];
-      } else if (user.accountType === AccountType.MANAGER.valueOf()) {
-        if (getConfirmation.fromUserId !== user.userId) {
-          user.dealerships = [...user.dealerships, dealership];
-        } else {
-          const getDriver = await getUser({
-            userId: getConfirmation.fromUserId,
-          });
-          if (!getDriver) throw new Error("Driver not found");
-          getDriver.dealerships = [...getDriver.dealerships, dealership];
-          await getDriver.save();
-        }
-      } else {
-        const getDriver = await getUser({
+      }
+
+      if (user.accountType === AccountType.ADMIN.valueOf()) {
+        const getSender = await getUser({
           userId: getConfirmation.fromUserId,
         });
-        if (!getDriver) throw new Error("Driver not found");
-        getDriver.dealerships = [...getDriver.dealerships, dealership];
-        await getDriver.save();
+        if (!getSender) throw new Error("Sender not found");
+        getSender.dealerships = [...getSender.dealerships, dealership];
+        await getSender.save();
       }
       await user.save();
+      
       getConfirmation.confirmationStatus = ConfirmationStatus.CONFIRMED;
       await getConfirmation.save();
+
       return getConfirmation;
     } catch (err) {
       console.error(err);

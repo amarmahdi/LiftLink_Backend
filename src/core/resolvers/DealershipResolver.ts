@@ -483,9 +483,31 @@ export class DealershipResolver {
 
   @Query(() => [Dealership])
   @Authorized()
-  async findDealerships(@Arg("searchTerm") searchTerm: string) {
+  async findDealerships(
+    @Arg("searchTerm") searchTerm: string,
+    @Ctx() ctx: any
+  ) {
     try {
-      const searchResults = await searchDealerships(searchTerm);
+      const username = (<any>ctx.payload).username;
+      const user = await getUser({ username });
+      if (!user) throw new Error("User not found");
+      const dealershipFromUser = user.dealerships.map((id) =>
+        id.dealershipId.toString()
+      );
+      const getConfirmation = await getRepository(UserDealershipConfirmation)
+        .createQueryBuilder("userDealershipConfirmation")
+        .where("userDealershipConfirmation.fromUserId = :fromUserId", {
+          fromUserId: user.userId,
+        }).orWhere("userDealershipConfirmation.toUserId = :toUserId", {
+          toUserId: user.userId,
+        }).getMany();
+      const dealershipFromConfirmation = getConfirmation.map((id) =>
+        id.toDealershipId.toString() || id.fromDealershipId.toString()
+      );
+      const searchResults = await searchDealerships(
+        searchTerm,
+        [...dealershipFromUser, ...dealershipFromConfirmation]
+      );
       return searchResults;
     } catch (error: any) {
       throw new Error("Failed to search dealerships " + error);

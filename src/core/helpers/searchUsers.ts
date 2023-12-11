@@ -47,6 +47,7 @@ export const searchUsers = async (
 
 export const searchDealerships = async (
   searchTerm: string,
+  excludeIds?: string[]
 ): Promise<Dealership[]> => {
   let query = Dealership.createQueryBuilder("dealership").leftJoinAndSelect(
     "dealership.servicePackages",
@@ -56,9 +57,15 @@ export const searchDealerships = async (
     searchTerm = searchTerm.toLowerCase();
     query = query.andWhere(
       new Brackets((qb) => {
-        qb.where("similarity(dealership.dealershipName, :searchTerm) > 0.2", {
-          searchTerm,
+        qb.where("dealership.dealershipId NOT IN (:...excludeIds)", {
+          excludeIds,
         })
+          .andWhere(
+            "similarity(dealership.dealershipName, :searchTerm) > 0.2",
+            {
+              searchTerm,
+            }
+          )
           .orWhere(
             "similarity(dealership.dealershipEmail, :searchTerm) > 0.2",
             {
