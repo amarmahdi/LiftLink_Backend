@@ -57,15 +57,17 @@ export const searchDealerships = async (
     searchTerm = searchTerm.toLowerCase();
     query = query.andWhere(
       new Brackets((qb) => {
-        qb.where("dealership.dealershipId NOT IN (:...excludeIds)", {
-          excludeIds,
-        })
-          .andWhere(
-            "similarity(dealership.dealershipName, :searchTerm) > 0.2",
-            {
-              searchTerm,
-            }
-          )
+        if (excludeIds && excludeIds.length > 0) {
+          qb = qb.where("dealership.dealershipId NOT IN (:...excludeIds)", {
+            excludeIds,
+          });
+        }
+        qb.andWhere(
+          "similarity(dealership.dealershipName, :searchTerm) > 0.2",
+          {
+            searchTerm,
+          }
+        )
           .orWhere(
             "similarity(dealership.dealershipEmail, :searchTerm) > 0.2",
             {
