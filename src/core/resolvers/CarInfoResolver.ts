@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Resolver, Query, Arg, Mutation, Ctx, Authorized } from "type-graphql";
 import { CarInfo } from "../entity/CarInfo";
 import { VehicleImage } from "../entity/VehicleImage";
