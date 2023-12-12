@@ -94,7 +94,6 @@ export class ValetResolverHelpers {
 
   async getValetById(valetId: string, driverId?: string) {
     let query = (await this.createQueryBuilderWithCommonJoins("valet"))
-      .leftJoinAndSelect("order.driver", "driver")
       .where("valet.valetId = :valetId", { valetId });
 
     if (driverId) {
@@ -303,7 +302,6 @@ export class ValetResolverHelpers {
     const valetExists = await (
       await this.createQueryBuilderWithCommonJoins("valet")
     )
-      .leftJoinAndSelect("order.vehicle", "vehicle")
       .where("order.orderId = :orderId", { orderId })
       .getOne();
     if (!valetExists) throw new Error("Valet not found");
