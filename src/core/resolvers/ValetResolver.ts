@@ -137,15 +137,13 @@ export class ValetResolver {
       const valet = await Helpers.getValetById(valetId, driver.userId);
       if (!valet) throw new Error("Valet not found");
 
-      if (valet.order.driver.userId !== driver.userId) {
+      if (valet.driver.userId !== driver.userId) {
         throw new Error("Driver is not assigned to this valet");
       }
       await Helpers.validateValetStatus(valet, state as ValetStatus);
-
       const date = new Date();
 
       await Helpers.updateValetState(valet, state, date, inputs);
-
       valet.valetStatus = state.toUpperCase() as ValetStatus;
       valet.driver = driver;
       valet.updatedAt = date;
