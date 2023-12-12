@@ -84,7 +84,7 @@ export class ValetResolverHelpers {
       .leftJoinAndSelect(`${alias}.dealership`, "dealership")
       .leftJoinAndSelect(`${alias}.order`, "order")
       .leftJoinAndSelect("order.vehicle", "vehicle")
-      .leftJoinAndSelect(`${alias}.driver`, "driver")
+      .leftJoinAndSelect(`${alias}.driver`, "driverAlias")
       .leftJoinAndSelect(
         `${alias}.customerVehiclChecks`,
         "customerVehiclChecks"
@@ -97,7 +97,7 @@ export class ValetResolverHelpers {
       .where("valet.valetId = :valetId", { valetId });
 
     if (driverId) {
-      query = query.andWhere("driver.userId = :driverId", { driverId });
+      query = query.andWhere("driverAlias.userId = :driverId", { driverId });
     }
 
     const valet = await query.getOne();
