@@ -132,8 +132,16 @@ export class ValetResolverHelpers {
     if (driver.isOnService) throw new Error("Driver is on service");
 
     const [dealership, order, valetExists] = await Promise.all([
-      getRepository(Dealership).findOne((inputs as any).dealershipId),
-      getRepository(Order).findOne((inputs as any).orderId),
+      getRepository(Dealership)
+        .createQueryBuilder("dealership")
+        .where("dealership.dealershipId = :dealershipId", {
+          dealershipId: (inputs as any).dealershipId,
+        })
+        .getOne(),
+      getRepository(Order)
+        .createQueryBuilder("order")
+        .where("order.orderId = :orderId", { orderId: inputs.orderId })
+        .getOne(),
       (await this.createQueryBuilderWithCommonJoins("valet"))
         .where("order.orderId = :orderId", { orderId: inputs.orderId })
         .getOne(),
@@ -229,8 +237,11 @@ export class ValetResolverHelpers {
   }
 
   async getVehicleById(vehicleId: string): Promise<CarInfo | undefined> {
-    const vehicleRepository = getRepository(CarInfo);
-    const vehicle = await vehicleRepository.findOne(vehicleId as any);
+    const vehicle = await getRepository(CarInfo)
+      .createQueryBuilder("vehicle")
+      .leftJoinAndSelect("vehicle.carImage", "carImage")
+      .where("vehicle.carId = :vehicleId", { vehicleId })
+      .getOne();
     return vehicle as CarInfo;
   }
 
